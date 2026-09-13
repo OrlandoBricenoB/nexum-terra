@@ -5,6 +5,6 @@
 - **Código:** (pendiente)
 - **Última actualización:** 2026-09-13 — documento creado; se rellena con la primera implementación.
 
-Copia las secciones de `_TEMPLATE.md` al implementar. Hasta entonces no inventar flujos: el contrato de sistema está en `PLAN.md`.
+Copia las secciones de `_TEMPLATE.md` al implementar. Hasta entonces no inventar flujos: el contrato de sistema está en `PLAN.md`. Honor, misiones, divisiones y profesiones: `docs/GDD.md` §11–§12 (A: misiones de rooms; B: profesiones; C: escolta/divisiones de mundo).
 
 Cuando exista código, este archivo debe explicar **negocio**, **técnica** y **gameplay** (o N/A). Cada cambio posterior se anota en Historial.

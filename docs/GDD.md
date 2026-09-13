@@ -2,9 +2,9 @@
 
 **Este archivo manda sobre fantasía, builds, stats, items, skills y sensación de combate.** La arquitectura (sesiones, EntityID, Postgres vs catálogo) está en `PLAN.md`. Cómo está implementado cada sistema en código: `docs/modules/`. Si un número de balance cambia, se edita aquí, el module doc si cambia el flujo, y luego `nexum-terra/data/`. Si cambia *cómo se persiste o se simula*, se edita `PLAN.md`.
 
-Fuentes actuales: GDD Notion, Gameplay, Daño y Build, Clanes, cinco reinos, Elementos y los cuatro básicos, Items y Crafting, Pasivas, Sistema de Puntos, Sistema de Rebirth, Obtención de Skills, Combates Melee, Clasificación, Rangos de Reinos, Sistema de Zonas, Dungeons (2026-09-13). Otras páginas de Notion siguen sin volcar.
+Fuentes actuales: GDD Notion, Gameplay, Daño y Build, Clanes, cinco reinos, Elementos y los cuatro básicos, Items y Crafting, Pasivas, Sistema de Puntos, Sistema de Rebirth, Obtención de Skills, Combates Melee, Clasificación, Rangos de Reinos, Sistema de Zonas, Dungeons, Misiones, Divisiones, Renegados, Robo, KO y Death, Regeneración, Logout bajo ataque, Médico, Espadachín, Sensor (2026-09-13). Pendiente de volcar: skills de clan.
 
-Estado: **normativo en lo escrito; incompleto en sistemas con página pendiente.** Caps base de maná / stamina / vitalidad y el modelo de daño estático + % están cerrados en §6. Calidad, nivel I–V, crafting de atributos, orbes de uso y mercado de jugadores están en §8.10–8.18 (Etapa B, no se simulan en Etapa A). Tasas de sprint, regeneración y % exactos por roll de atributo siguen abiertos. Mazmorras: §16 (instancia en B; spawn de mundo en C). Sistema de zonas / overworld: §15, **congelado** (Etapa C). Monedas y modelo de negocio (NC / Hesedias, IAP): §17 (diseño); cobro y tablas: `PLAN.md` §4.14 y §29.
+Estado: **normativo en lo escrito; incompleto donde se marca abierto.** Caps base de maná / stamina / vitalidad y el modelo de daño estático + % están cerrados en §6. Calidad, nivel I–V, crafting de atributos, orbes de uso y mercado de jugadores están en §8.10–8.18 (Etapa B, no se simulan en Etapa A). Tasa de sprint abierta. Regeneración: reglas en §12.6 (tasas numéricas abiertas). Mazmorras: §16 (instancia en B; spawn de mundo en C). Sistema de zonas / overworld: §15, **congelado** (Etapa C). Misiones / KO / profesiones: §12. Monedas y modelo de negocio (NC / Hesedias, IAP): §17 (diseño); cobro y tablas: `PLAN.md` §4.14 y §29.
 
 Inspiración de ritmo (no de lore ni de calendario): [StormEdge](https://store.steampowered.com/app/2321350/StormEdge/). Acción frenética. El overworld partido en regiones es **Etapa C** (`PLAN.md` §18), no el juego que se construye ahora.
 
@@ -37,7 +37,7 @@ Tres eras, alineadas con `PLAN.md` §1.1. **No se mezclan.** El modelo de person
 | Rebirths y pasivas especiales de rebirth | no | sí | — |
 | Árbol de puntos / grind de activas | no | sí (PVE de mazmorra) | grind también en overworld cuando exista |
 | Mazmorras instanciadas | no | sí: **rooms desde el lobby** (tipos y recompensas §16) | mismas instancias; el **portal** spawnea en zonas del overworld (§16.1, §16.3). Se **sale** del shard al battle node |
-| Misiones, renegados, logout bajo ataque | no | no (salvo lo que se vuelque como meta de B) | al volcar cada doc; son de mundo |
+| Misiones | contadores de rooms (ej. gana 3 1v1) | + PvE de mazmorra / honor de reino si se cataloga | escoltas, robo de mercancía, mundo |
 | Sistema de zonas, regiones, conquista, robo en cadáveres de mundo | **no** | **no** | sí (§15). **Prohibido** prototipar en A/B |
 
 Todo es reemplazable en una build **excepto el clan en el que naces**, hasta un rebirth (§11.3). En Etapa A ese ancla ya se elige; aún no otorga skills.
@@ -237,7 +237,7 @@ Tres pools. IDs de data en inglés.
 
 | id | Nombre | Qué es |
 | --- | --- | --- |
-| `mana` | Maná | Energía de poder. En la fuente de kill-budget también se llama **chakra** al robo. |
+| `mana` | Maná | Energía de poder. En la fuente de kill-budget también se llama **chakra** al robo. Tiene **reserva** (`mana_reserve`): el pool se recarga **cargando** (hold Z, §9.1), no por regen automática (§12.6). |
 | `stamina` | Stamina | Salud física y mental. Permite **correr** y **resistir golpes**. |
 | `vitality` | Vitalidad / vida | Salud vital. A **0 → KO**. |
 
@@ -271,7 +271,7 @@ Maná → Stamina → Vitalidad
 
 - Daño a **stamina**: no toca maná. Overflow: stamina → vitalidad.
 - **Robo de maná** con maná a 0: el resto pasa a stamina; si stamina está a 0, a vitalidad.
-- Vitalidad a **0**: el usuario cae **KO**. Muerte / downed / loot: página KO y Death, aún no volcada.
+- Vitalidad a **0**: el usuario cae **KO**. Conteos, minijuego de levantarse, death, cadáver y hospital: §12.5. Regen de pools y de conteo de KO: §12.6.
 
 Presupuesto para tumbar a alguien con caps base (sin equipo):
 
@@ -653,7 +653,7 @@ Convención en tablas: 🔳 / 🔼 / ⭕ / ❎ = face buttons del mando; L2/R2 =
 | --- | --- | --- |
 | Movimiento | WASD | Joystick izquierdo |
 | Cámara | Mouse | Joystick derecho |
-| Modo maná (tap) o recargar maná (hold) | Z | L2 |
+| Modo maná (tap) o recargar maná desde la **reserva** (hold) | Z | L2 |
 | Reemplazamiento (Kawarimi: cuerpo falso + invisibilidad breve para reposicionar) | R | Doble R2 *o* Doble L2 (la fuente duplica R; unificar al implementar) |
 | Barra de skills anterior / siguiente | Scroll up / down | ← / → en stick derecho |
 | Guardia | X | R2 |
@@ -829,7 +829,7 @@ Cómo se aprenden y ramifican: §11.5. Activas elementales suben de nivel con el
 - **PvP (Fases 3–4):** `match_records` + rating futuro. Caps de vitals pueden **equalizarse** al baseline (2000 / 2000 / 1500) o respetar gear de maná/stamina. El % por tag de equipo es la palanca de especialización; si el 1v1 debe ser fair, se capean o se ignoran mods de ítem en el ruleset `pvp_duel`. Decisión aún abierta; el modelo de tres pools no cambia.
 - **PvE / mundo:** gear importa; drops al terminar la sesión. Mejora de activas por uso (cuando exista).
 
-Clasificación D–SSS: §11.6. Rangos de reino: §11.7. Misiones y divisiones: aún §12.
+Clasificación D–SSS: §11.6. Rangos de reino: §11.7. Misiones, divisiones, renegados, KO/Death: §12.
 
 ### 11.1 Puntos de habilidad y de rebirth
 
@@ -852,7 +852,7 @@ Obtención: subir de **rango** (cantidades fijas por umbral de §11.6 / §11.7; 
 
 ### 11.2 Árbol de pasivas generales
 
-Ramas I→V. Nivel I desbloquea II, etc., salvo requisitos extra anotados. Ids como en la fuente. Se **entrenan** (uso / kills); los puntos de habilidad pueden adelantar, no son el requisito. Esto **no** es el mismo sistema que las profesiones Médico / Espadachín / Sensor (§12); no fusionar. Las skills **elementales** no viven aquí: se compran con puntos (§11.1, §11.5).
+Ramas I→V. Nivel I desbloquea II, etc., salvo requisitos extra anotados. Ids como en la fuente. Se **entrenan** (uso / kills); los puntos de habilidad pueden adelantar, no son el requisito. Esto **no** es el mismo sistema que las profesiones Médico / Espadachín / Sensor (§12.8); no fusionar. Las skills **elementales** no viven aquí: se compran con puntos (§11.1, §11.5).
 
 Este árbol y las pasivas especiales de rebirth se seguirán afinando al implementar **Etapa B** (PVE de mazmorra / meta). No simular en Fases 1–4. No esperar al overworld.
 
@@ -864,7 +864,7 @@ Este árbol y las pasivas especiales de rebirth se seguirán afinando al impleme
 | I | `elementary-novice` | Controlar **1** elemento |
 | II | `arcane` | +10% daño mágico |
 | II | `elementary-apprentice` | Controlar **2** elementos a la vez |
-| III | `fast-regeneration` | Más velocidad de regeneración de stamina |
+| III | `fast-regeneration` | Más velocidad de regeneración de stamina (cuando aplica §12.6) |
 | III | `elementary-master` | Controlar **3** elementos a la vez |
 | IV | `extreme-survival` | Sobrevivir en condiciones extremas. Pequeña probabilidad de **no caer KO** al llegar vitalidad a 0 |
 | V | `elementary-genius` | Controlar **4** elementos a la vez. Requiere `elementary-master` **y** `extreme-survival` |
@@ -983,11 +983,11 @@ Subir de rango exige **los dos** umbrales a la vez (AND): **Honor** y **asesinat
 
 El rango **se deriva** de los contadores; no se elige a mano. El lobby de práctica **no** suma honor ni asesinatos.
 
-**Por era:** en A se pueden persistir asesinatos de rooms PvP (KO que cuente como kill: cuando exista KO/Death). Honor queda en 0 hasta misiones (B/C). El HUD puede mostrar D hasta que Honor arranque. Un rebirth pone honor, asesinatos y rango de clasificación a D / 0 / 0 (§11.3).
+**Por era:** en A se persisten asesinatos de rooms PvP cuando el KO cuenta como kill (§12.5). Honor puede subir en A con **misiones de rooms** (ej. gana 3 1v1); las misiones de reino / escolta son B o C (§12.1). Sin misiones de honor, el HUD puede quedar en D. Un rebirth pone honor, asesinatos y rango de clasificación a D / 0 / 0 (§11.3).
 
 Puntos de habilidad “al subir de rango”: cantidades fijas **aún no listadas** en la fuente; no inventar la tabla de puntos.
 
-Esto **no** es el rango de reino (§11.7) ni las Divisiones (§12).
+Esto **no** es el rango de reino (§11.7) ni las Divisiones (§12.2). Los asesinatos y el honor que se ganan/pierden al matar siguen §12.5.
 
 ### 11.7 Rangos de reino
 
@@ -1015,25 +1015,237 @@ Rebirth exige rango **Élite** (§11.3); al renacer el rango de reino vuelve a N
 
 ---
 
-## 12. Sistemas con página pendiente (no rellenar de memoria)
+## 12. Misiones, mundo social y profesiones
 
-Hay diseño en Notion que **no** está en los PDF volcados. Hasta el siguiente documento, no se inventan reglas. Ya volcados fuera de esta tabla: combate melee §9.6, clasificación §11.6, rangos de reino §11.7.
+Fuentes volcadas: Misiones, Divisiones, Renegados, Robo, KO y Death, Regeneración, Logout bajo ataque, Médico, Espadachín, Sensor. **Skills de clan** siguen fuera (otro prompt).
 
-| Sistema | Etapa probable | Notion |
+Números con ceros: el export de Notion pierde glifos `0`/`D`/`R` en CID; aquí se reconstruyen con el resto del GDD (p. ej. 150 Honor = suelo de Élite/Comandante en §11.6–11.7). Si un valor no encaja al implementar, se corrige aquí, no en el tick.
+
+| Pieza | A (rooms) | B (mazmorras + meta) | C (open world) |
+| --- | --- | --- | --- |
+| KO / death de combate | sí (conteos, minijuego; loot de cadáver **no**) | sí; respawn de mazmorra §16.4 | sí + cadáver 45 s + hospital |
+| Misiones de contador (gana N 1v1, etc.) | sí, catálogo pequeño | más PvE de instancia | + mundo |
+| Misiones de reino (honor tabla D–S) | no hace falta el mapa | honor de mazmorra / meta si se cataloga | escolta / robo de mercancía |
+| Divisiones | no | no (exige Élite) | sí (overworld + uniformes) |
+| Renegados / desertar reino | no (clan de nacimiento fijo) | ítem de redención se puede vender en meta | efecto de mundo |
+| Robo de cadáver | no | no | sí; % por zona §15.2 |
+| Logout “Bajo ataque” | rooms: disconnect = forfeit del match, no cadáver de mundo | igual | sí (30 s, cadáver) |
+| Profesiones | no | sí (10 puntos de habilidad, §11.1) | se reutilizan |
+| Regeneración | quieto al 50 %; hold Z desde reserva; sillas del lobby si hay tile | pociones + reposo de instancia | sillas/camas de mundo |
+
+### 12.1 Misiones
+
+Clasificación de **dificultad** D / C / B / A / S. Más rango → más recompensa. Las de **reino** suelen dar **honor y dinero** (Hesedias). Honor por rango de misión:
+
+| Rango de misión | Honor |
+| --- | --- |
+| D | 1 |
+| C | 1 |
+| B | 3 |
+| A | 5 |
+| S | 10 |
+
+El catálogo se **añade con el juego**. No hay lista cerrada en la fuente; el brainstorm admite cosas como “matar 5 miembros de un reino”.
+
+**Etapa A / B (rooms e instancias).** Objetivos que no necesitan overworld: p. ej. **gana 3 batallas 1v1**, completar N arenas, matar al dummy-jefe de una mazmorra. Mismo framework de misión (id, rango, recompensa); el `progress` lee `match_records` / fin de run, no posición de mundo.
+
+**Etapa C — escoltar y robar mercancía** (misión **compartida**: varias personas la toman y cooperan).
+
+Cargar mercancía **ralentiza** el caminar (NPC y jugadores que la cargan).
+
+**Escoltar.** Un NPC lleva carga de un punto a otro. La misión **empieza** al hablarle. Todos los que la tomaron pueden escoltar.
+
+**Robar.** En cuanto alguien **empieza** a escoltar, aparece en los **otros reinos** la misión de robar esa mercancía. Los ladrones matan al NPC, toman la carga y la llevan al **mercado negro**.
+
+**Recuperar.** Los escoltas pueden quitar la carga a los ladrones y seguir la ruta del NPC: entonces **un escolta** camina lento con la carga (ya no el NPC). Eso **priva** de muchos movimientos y habilidades; el resto debe protegerlo.
+
+No prototipar rutas de escolta, mercado negro ni NPCs de mundo en A/B.
+
+### 12.2 Divisiones
+
+Cada reino tiene **2** organizaciones. Cualquier mago se une **a partir de rango Élite** (§11.7, torneo). Dan **habilidades especiales** y **uniforme**; refuerzan la fantasía del reino.
+
+| Reino | División | Uniforme / notas | Requisito extra en fuente |
+| --- | --- | --- | --- |
+| Terrara | Caballería Bélica | Full armadura hierro/acero | Alta Fuerza o Poder |
+| Terrara | Magos Blancos | Túnicas blancas; skills médicas para sanar | Alto Control |
+| Spectra | Escuadrón de Torturas | Vestimenta oscura, aspecto sanguinario | — |
+| Spectra | Infiltración | Nombre solo; kit abierto | — |
+| Aerion | Brigada de Reconocimiento | Vestimenta ligera, camuflaje | — |
+| Aerion | Maestros de las Barreras | Barreras impenetrables; cubren el cuerpo propio y el de aliados | — |
+| Fontaine | Equipo de Investigación | Vestimenta científica; buffs de **crafting** y afines | — |
+| Fontaine | (falta) o Infiltración Tecnológica | Segunda división **no cerrada** en la fuente | — |
+
+**Unirse.** Se puede cambiar de división cuando se quiera (del mismo reino). Coste: **50 Honor**. Hay que ser Élite **y** tener esos 50 **por encima** del suelo **150** Honor: se entra con **200** y, al pagar, se vuelve a **150**.
+
+**Mantener.** **2 Honor por día** (14 por semana ≈ 3 misiones B de §12.1 para cubrirlo).
+
+**Perder.** Si el Honor cae **por debajo de 150**, se pierde la membresía **y** el rango Élite según esta fuente. Eso choca con Élite-por-torneo de §11.7: al implementar, el suelo 150 corta la **división**; si también despoja el título de torneo, se decide aquí, no en silencio.
+
+Fuerza / Poder / Control de la tabla son requisitos de **fantasía** de la fuente; el modelo de daño actual no tiene esos stats (§6). No inventar umbrales hasta alinear con vitals / profesión.
+
+### 12.3 Renegados (desertores)
+
+- **¿Cambiar de reino?** No. El reino nace del **clan** que elegiste (§3.1). (El rebirth **sí** corta afiliación y elige otro clan/reino, §11.3; no es “cambiar de reino” en vida.)
+- **Abandonar el reino** → **desertor** (renegado).
+- **Volver a un reino:** ítem de redención, **10 000 Hesedias** o **100 NC**. El rey **no** puede meter a un desertor gratis; paga el jugador.
+- **¿El rey expulsa?** No (abuso).
+
+Etapa A: nadie deserta. El ítem puede existir en catálogo Commerce/Inventory en B; el estado “sin reino” en overworld es C.
+
+### 12.4 Robo (cadáveres, Etapa C)
+
+Al **morir** (no al KO) queda cadáver un tiempo (§12.5: **45 s**). Se saquean ítems **encima** del cuerpo; la **cantidad** la fija el **color de zona** (§15.2). Por eso bancos y baúles importan.
+
+No es auto-loot: hay que **acercarse**. Abrir el menú de robo tarda **unos segundos** (número exacto abierto), **se interrumpe con cualquier golpe**, y **nadie “Bajo ataque”** (§12.7) puede abrirlo.
+
+Sirve para que un compañero lootee, para que varios peleen el cadáver, o para que **no dé tiempo** y se protejan los bienes del aliado.
+
+Rooms A/B: no hay cadáver de mundo ni menú de robo.
+
+### 12.5 KO y Death
+
+Vitalidad a **0** → **KO**, no muerte inmediata.
+
+**Levantarse** es una **elección** (no auto-stand). Si no te esfuerzas (olvidar tecla, tecla mala, o dejar pasar el tiempo) → **mueres**. Fantasía de minijuego (puntería, orbes/espíritus); más **conteo de KO** → más difícil; el **último** KO del cupo debe ser **casi imposible** (pasar el rato antes de morir). Fallback: mantener una tecla **X** tiempo (X abierto).
+
+**Cupo de KOs según rango de reino** (§11.7):
+
+| Rango | KOs antes de death |
+| --- | --- |
+| Novicio, Soldado | 1 |
+| Comandante | 2 |
+| Élite | 3 |
+
+Cada KO abre una ventana de **30 s** para morir si no te levantas. El **%** es cuánto de esos 30 s hay que canalizar para levantarse:
+
+| Nº de KO | Canal para levantarse | Tiempo de canal |
 | --- | --- | --- |
-| Misiones | mundo / PvE | [Misiones](https://app.notion.com/p/Sistema-de-Misiones-2891e055ee8d819399dbd20a84ba97bb?pvs=21) |
-| Divisiones | PvP / mundo | [Divisiones](https://app.notion.com/p/Sistema-de-Divisiones-2891e055ee8d8171adcddabcdc9ee393?pvs=21) |
-| Renegados | mundo | [Renegados](https://app.notion.com/p/Sistema-de-Renegados-2891e055ee8d811b9ba3c68c9c51b4e8?pvs=21) |
-| Robo | Etapa C (cadáveres; se enlaza a §15) | [Robo](https://app.notion.com/p/Sistema-de-Robo-2891e055ee8d81c4aa95d08690fc7bcb?pvs=21) |
-| KO y Death | todas | [KO y Death](https://app.notion.com/p/Sistema-de-KO-y-Death-2891e055ee8d819a8269d89a6d3fabaf?pvs=21) |
-| Regeneración | combate | [Regeneración](https://app.notion.com/p/Sistema-de-Regeneraci-n-2891e055ee8d8173a477eb396bca8b6f?pvs=21) |
-| Logout bajo ataque | mundo | [Logout bajo ataque](https://app.notion.com/p/Sistema-de-Logout-Bajo-Ataque-2891e055ee8d816f9acbc7f44028196c?pvs=21) |
-| Órdenes | mundo / party | [Órdenes](https://app.notion.com/p/Sistema-de-rdenes-2891e055ee8d8101b7a0f3d0f391aa65?pvs=21) — Comandante puede crear Orden (§11.7); territorios = C |
-| Zonas | **Etapa C** (volcado en §15) | [Zonas](https://app.notion.com/p/Sistema-de-Zonas-2891e055ee8d81588edce4a3132073d2?pvs=21) |
-| Dungeons | **Etapa B** instancia; spawn en mapa **Etapa C** (volcado en §16) | [Dungeons](https://app.notion.com/p/Dungeons-2891e055ee8d81a28844e2edf7155084?pvs=21) |
-| Pasivas especiales (resto del catálogo) | largo plazo | [Pasivas especiales](https://app.notion.com/p/Pasivas-Especiales-2891e055ee8d8187a6adfd3f1464d662?pvs=21) — patrón y ejemplo en §11.4 |
-| Profesiones | largo plazo | [Médico](https://app.notion.com/p/M-dico-2891e055ee8d81469a7ec0a5834ac4ee?pvs=21), [Espadachín](https://app.notion.com/p/Espadach-n-2891e055ee8d81989991f2e73c183956?pvs=21), [Sensor](https://app.notion.com/p/Sensor-2891e055ee8d81ad9844f33f42e312b7?pvs=21) |
-| Skills de clan | cuando se activen | [Omnivisus](https://app.notion.com/p/Omnivisus-Skills-2891e055ee8d81bca43ef96c5cc18267?pvs=21), [Gadgetrix](https://app.notion.com/p/Gadgetrix-Skills-2891e055ee8d81fd9507c492928316b8?pvs=21), [Entomante](https://app.notion.com/p/Entomante-Skills-2891e055ee8d8108bdb5d54ffc692d91?pvs=21), [Nachtsoldaten](https://app.notion.com/p/Nachtsoldaten-Skills-2891e055ee8d8156b831cbf162e250cd?pvs=21), [Pulmonarius](https://app.notion.com/p/Pulmonarius-Skills-2891e055ee8d8173a00df68feceaf190?pvs=21), [Sangrafilos](https://app.notion.com/p/Sangrafilos-Skills-2891e055ee8d8117af0bd8299cd1546b?pvs=21), [Umbromante](https://app.notion.com/p/Umbromante-Skills-2891e055ee8d818aab16ee84dfac6767?pvs=21), [Geisteswaffen](https://app.notion.com/p/Geisteswaffen-Skills-2891e055ee8d81ae9388e1e94d8502bf?pvs=21). El resto de clanes aún no tiene página volcada. |
+| 1 | 26,66 % de 30 s | 8 s |
+| 2 | 50 % | 15 s |
+| 3 | 80 % | 26 s |
+| 4+ | 150 % cada vez | un médico puede aportar ese %; **se puede interrumpir** |
+
+Al vencer los 30 s en el suelo, **mueres** sea cual sea el número de KO.
+
+**Penalización de movimiento:** a partir de cierto conteo corres más lento — **1** KO acumulado si eres Comandante, **2** si Élite. En el **último** KO del cupo **no puedes correr**.
+
+**Al levantarte:** vitalidad y stamina al **10 %**. Maná y reserva de maná **no** se tocan. Para bajar el conteo de KO hace falta vitalidad al **100 %** (§12.6).
+
+**Death / cadáver (overworld):** el cuerpo dura **45 s**. Tras fallar el KO: mueres → **15 s** → spawn en **hospital** → **1 min 30 s** para poder levantarte y salir.
+
+**Honor y asesinatos al morir** (clasificación §11.6, no rango de reino):
+
+Cuando **tú mueres:**
+
+- Pierdes honor (y “otras cosas” no listadas) si el asesino es de clasificación **igual o inferior**.
+- Igual rango de clasificación: **−2** Honor.
+- Asesino inferior: **−5** Honor **por cada rango** de diferencia (2 rangos abajo → **−10**).
+- Excepción **Special** (S/SS/SSS…): si un Special mata a un SSS, el SSS pierde solo **5**. Si **tú** eres Special, pierdes **3** Honor (da igual el número de S) **más 1** por cada S que te falte respecto al asesino. Detalle fino de “Special” vs umbrales S/SS/SSS: al implementar, no inventar un rango nuevo.
+
+Cuando **tú asesinas:**
+
+- Si la víctima es de clasificación **igual o superior**, ganas **1 asesinato**.
+- Ganas el **mismo** Honor que pierde la víctima.
+
+En **rooms** A/B: mismos conteos de KO y kill/honor de clasificación; **sin** cadáver, hospital ni % de zona. Práctica: sin persistir (§11).
+
+Mazmorra: wipe de party y reentrada §16.4; el KO de combate es este apartado.
+
+### 12.6 Regeneración
+
+Fuente: *Sistema de Regeneración*. Tasas (puntos/s, duración de beber poción): **abiertas**. La pasiva `fast-regeneration` (§11.2) acelera stamina **cuando esta regen aplica**, no inventa un cuarto sistema.
+
+**No hay regen automática genérica** (andar, pelear, o un stat de personaje que suba pools al 100 %). Lo que pase de las reglas de abajo es **equipamiento** (`item_def` / orbes), no un tick aparte.
+
+Jerarquía (la misma que el overflow de daño, §6.3, al revés del “pozo”):
+
+```
+Maná → Stamina → Vitalidad
+```
+
+#### Quieto (techo 50 %)
+
+Hay que estar **quieto** (sin movimiento). Cada pool solo sube **hasta el 50 %** de su cap.
+
+Orden **estricta**, un peldaño a la vez:
+
+1. Regenera **maná** hasta 50 %.
+2. Si el maná está **≥ 50 %**, regenera **stamina** hasta 50 %.
+3. Si la stamina está **≥ 50 %**, regenera **vitalidad** hasta 50 %.
+
+Si el maná ya iba al 80 %, se salta al paso 2. Moverse corta esta regen. **No** baja conteos de KO.
+
+#### Reposo (sillas / camas)
+
+Tiles de reposo (lobby, instancias, mundo). Ahí la regen cubre **desde la reserva de maná hasta la vitalidad**. El pool de **maná no se llena solo**: hay que **cargar de la reserva** (hold Z, §9.1). Stamina y vitalidad sí suben sentado (tasa abierta).
+
+El **conteo de KOs** puede bajar hasta **0** en reposo, pero **exige vitalidad al 100 %**. Sin eso, el conteo no se mueve.
+
+Cualquier **curación de vitalidad** que la lleve al 100 % (médico, poción de vida, etc.) puede **bajar el conteo de KO a la vez** que rellena stamina y maná (si la cura o el contexto lo permite; no inventar que una cura de 10 HP vacíe tres KOs).
+
+#### Pociones
+
+Se compran pociones de **maná** y de **vida** (Hesedias; catálogo Etapa B). **No te puedes mover** unos segundos mientras las bebes. Son **más rápidas** que las sillas.
+
+En **pelea** solo se beben si el **oponente está KO**. Cap de usos por **arena**: abierto (“luego se revisa”); el ruleset `pvp_arena` / `pvp_duel` puede poner 0 o N.
+
+Etapa A: quieto 50 % + hold Z. Tiles de reposo en lobby si existen. Pociones cuando haya inventario.
+
+### 12.7 Logout “Bajo ataque”
+
+Al **recibir un ataque** de alguien: estado **Bajo ataque**.
+
+- No permite **pasar a otras zonas** del mapa (C).
+- Caduca **30 s** después del último golpe recibido.
+- Si te **desconectas** bajo ataque: dejas **cadáver**, se cuenta la **muerte**, recompensa al **último** que te pegó.
+- Si te desconectas **en KO**: igual (cadáver + muerte + reward al último atacante).
+
+Etapa A/B: no hay zonas que cruzar. Disconnect en duelo/arena = **forfeit** del match (ruleset); no spawnea cadáver de §12.4.
+
+### 12.8 Profesiones (Etapa B, antes del open world)
+
+Distinto del árbol de pasivas generales (§11.2). Aprender una profesión: **10** puntos de habilidad (§11.1). Números de cura/daño/CD: abiertos (data al implementar). Canal de daño de skills médicas: **vitalidad** salvo que data diga otra cosa. Sangrado / veneno / taunt = status effects del tick.
+
+#### Médico (`medic`)
+
+**Pasivas**
+
+| id (propuesto) | Efecto |
+| --- | --- |
+| `healing-mastery` | Más vida recuperada con skills médicas |
+| `protection-aura` | Aura permanente: daño de **tu reino** al **75 %**; de tu **party** al **0 %** (100 % reducción) |
+| `persistent-poison` | Más duración del secundario Veneno en víctimas |
+| `poison-resist` | **−85 %** daño de venenos ajenos; **inmune** a los propios |
+
+**Activas**
+
+| id (propuesto) | Efecto |
+| --- | --- |
+| `heal` | Cura instantánea al jugador en la misma dirección. Si deja vitalidad al **100 %**, puede bajar conteo de KO (§12.6) |
+| `heal-aura` | Cura aliados en área. Alt: cura a **cualquiera** dentro del aura |
+| `potion` | Quita **un** estado negativo (el de **más daño** primero) |
+| `resurrection` | Revive a un aliado **antes** de que el cadáver desaparezca. **15 s**, interrumpible. Coste: **50 %** del maná y **+1** conteo de KO al médico. El revivido: maná que tenía **+75 %**, stamina y vitalidad al **75 %**, y **3** conteos de KO si 3 es el máximo de su rango |
+| `poison-bomb` | Bomba **3×3**; Veneno + daño directo si pega a un jugador |
+| `toxic-cloud` | Nube **6×6**; DoT/s (DoT) y chance de secundario (DoT fuera de la nube) |
+
+#### Espadachín (`swordsman`)
+
+Mejora el uso de **espadas** frente al resto del arma melee.
+
+**Pasivas:** `sword-mastery` (más velocidad de ataques con espada); `tenacity` (**−50 %** daño de sangrado); `iron-will` (**−25 %** daño de efectos secundarios).
+
+**Activas:** `simple-cut` (línea frontal, sangrado); `double-cut` (dos cortes en X, cono, daño moderado, sangrado); `charge` (dash-corte, stun + sangrado); `shadow-step` (invulnerable, gran velocidad, breve; Flicker **controlable** y un poco más largo); `slash` (giro en área, sangrado).
+
+#### Sensor (`sensor`)
+
+**Pasivas:** `mana-control` (menos maná para ocultar presencia); `mana-knowledge` (ver vitals del objetivo en **3 etapas**: maná → stamina → vitalidad). En discusión: gastar un **slot elemental** para ver secundarios y KOs como Omnivisus — **no cerrado**. `night-vision` (mejor visión en oscuridad).
+
+**Activas:** `hide-magic` (nadie ve info sensorial ni la **identidad**); `detect-presence` (flechas en órbita: dirección, **color de maná**, distancia); `false-presences` (**5** clones, taunt fuerte, `group_name` Taunt); `distortion` (invisible **mientras no te mueves**).
+
+### 12.9 Skills de clan (pendiente)
+
+No volcar de memoria. PDFs en un prompt siguiente. Notion: [Omnivisus](https://app.notion.com/p/Omnivisus-Skills-2891e055ee8d81bca43ef96c5cc18267?pvs=21), [Gadgetrix](https://app.notion.com/p/Gadgetrix-Skills-2891e055ee8d81fd9507c492928316b8?pvs=21), [Entomante](https://app.notion.com/p/Entomante-Skills-2891e055ee8d8108bdb5d54ffc692d91?pvs=21), [Nachtsoldaten](https://app.notion.com/p/Nachtsoldaten-Skills-2891e055ee8d8156b831cbf162e250cd?pvs=21), [Pulmonarius](https://app.notion.com/p/Pulmonarius-Skills-2891e055ee8d8173a00df68feceaf190?pvs=21), [Sangrafilos](https://app.notion.com/p/Sangrafilos-Skills-2891e055ee8d8117af0bd8299cd1546b?pvs=21), [Umbromante](https://app.notion.com/p/Umbromante-Skills-2891e055ee8d818aab16ee84dfac6767?pvs=21), [Geisteswaffen](https://app.notion.com/p/Geisteswaffen-Skills-2891e055ee8d81ae9388e1e94d8502bf?pvs=21). El resto de clanes aún sin página.
 
 ---
 
@@ -1045,7 +1257,11 @@ Bandas sonoras citadas: **Base**; **Base Boss — Tenebroso — Acción**. Catá
 
 ## 14. Trabajo pendiente de diseño (aquí, no en PLAN)
 
-- [ ] Volcar páginas Notion de §12 (reinos/clanes en §3; pasivas, puntos, rebirth y obtención de skills en §11; melee/clasificación/rangos de reino volcados)
+- [ ] Volcar skills de clan (§12.9)
+- [ ] Tasas de regen (quieto / reposo / poción) y cap de pociones por arena (§12.6)
+- [ ] Catálogo v1 de misiones de rooms (A) vs mazmorra (B) vs escolta (C)
+- [ ] Segunda división de Fontaine; kit de Infiltración Spectra
+- [ ] Segundos exactos para abrir menú de robo; tecla/minijuego de KO
 - [ ] ms de stun al romper guardia; tiles de onda de choque; tasa de gasto/carga de barra de guardia
 - [ ] % exacto por `item_def` de escudo (banda 60–80)
 - [ ] Puntos de habilidad por umbral de clasificación / rango de reino
@@ -1063,7 +1279,7 @@ Bandas sonoras citadas: **Base**; **Base Boss — Tenebroso — Acción**. Catá
 - [ ] Layout de mando y móvil
 - [ ] Target / drop target
 - [ ] PvP: equalizar caps de vitals y/o ignorar % de gear en `pvp_duel`
-- [ ] Tasa de gasto de stamina al correr y recarga de maná (hold Z); regeneración en combate (página pendiente)
+- [ ] Tasa de gasto de stamina al correr; puntos/s de regen y segundos de beber poción (§12.6)
 - [ ] Lista v1 de tags de % (`melee` suficiente para primeras etapas)
 - [ ] Kit v1 de skills de prueba (4–6) **sin** skills de clan/elemento/profesión; melee con `damage_channel: stamina` y `base` estático
 - [ ] Autocoste de súper técnicas (root / no moverse al castearla)
@@ -1088,9 +1304,9 @@ Bandas sonoras citadas: **Base**; **Base Boss — Tenebroso — Acción**. Catá
 - [ ] Primera skill de clan: llenar `skills` en `clans.json` + GDD, no un `if` en el player (Etapa B)
 - [ ] Etapa C: lista cerrada de regiones (ids, adyacencia, qué shard); no inventar el mapa en A/B
 - [ ] Etapa C: elegir el split de tesorería al conquistar todos los territorios (§15.4)
-- [ ] Volcar Sistema de Robo (cadáveres) y engancharlo a los % de §15.2
+- [ ] Segundos de canal del menú de robo (§12.4 ya enlaza % de §15.2)
 - [ ] Reconciliar precio de orbe elemental (15 000 Hes) con tablas de cofres §16.5
-- [ ] KO/Death en mazmorra (página pendiente) vs respawn en portal §16.4
+- [ ] Ruleset de mazmorra: wipe vs conteos de KO §12.5 y reentrada §16.4
 - [ ] Layouts de verde y roja (asentamientos / jefes) más allá de lo cerrado en azul §16.5
 - [ ] Catálogo de drops de jefe (además de Hesedias de cofre)
 - [ ] Eventos que disparan mazmorras globales §16.6
@@ -1101,7 +1317,7 @@ Bandas sonoras citadas: **Base**; **Base Boss — Tenebroso — Acción**. Catá
 
 **No se implementa** en Etapa A ni B. Arquitectura y candado: `PLAN.md` §18. Este apartado guarda el diseño para cuando el equipo escriba el ADR de desbloqueo, **meses** después de mazmorras + meta jugables.
 
-El sistema de zonas se vincula al **Sistema de Robo** en cadáveres (página Notion aún no volcada). Los % de pérdida de Hesedias e ítems de esta sección son la regla de zona; el flujo de saqueo (quién lootea, ventana de tiempo, KO vs death) se copia de Robo cuando exista, no se inventa aquí.
+El sistema de zonas se vincula al **robo de cadáveres** (§12.4). Los % de Hesedias e ítems de esta sección son la regla de zona; quién lootea, canal interrumpible y cadáver de 45 s están en §12.4–12.5. KO no instancia cadáver.
 
 ### 15.1 Regiones (no un mapa único)
 
@@ -1214,14 +1430,14 @@ En Etapa B **no** hay este reloj de mapa. La oferta de rooms del lobby la cierra
 
 ### 16.4 Qué pasa si te matan
 
-Varía según la **zona de aparición del portal** (colores y %: §15.2). KO/Death de combate (página Notion pendiente) no se inventa aquí.
+Varía según la **zona de aparición del portal** (colores y %: §15.2). El combate usa KO/Death §12.5; el saqueo de cadáver solo aplica si esa muerte es de **overworld** (C). En la instancia, loot de cofre/jefe es §16.5, no el menú de robo.
 
 Comportamiento de **reentrada** (pensado para C, con portal en el mundo):
 
 - Reapareces **fuera** y puedes volver a la entrada para reunirte con tu party.
 - Si **matan a todos** los miembros de la party **dentro**, **no pueden volver a entrar**. Evita hostigar a quienes ya ganaron el combate reentrando en bucle.
 
-En Etapa B (room desde lobby, sin portal): la reentrada al battle node la define el ruleset al implementar (mismo espíritu: wipe de party cierra el run; no inventar un “portal invisible” en el lobby). Detalle fino: al volcar KO y Death.
+En Etapa B (room desde lobby, sin portal): la reentrada al battle node la define el ruleset al implementar (mismo espíritu: wipe de party cierra el run; no inventar un “portal invisible” en el lobby). Conteos de KO dentro del run: §12.5.
 
 ### 16.5 Recompensas y recorrido
 

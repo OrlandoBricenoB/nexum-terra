@@ -499,7 +499,7 @@ Migraciones en `infra/postgres/migrations/`. Nombres en `snake_case`.
 | name | text unique | |
 | kingdom_id | text | catálogo `nexum-terra/data/kingdoms.json`. Jugable: `fontaine` `terrara` `spectra` `aerion`. `aurora` solo GM |
 | clan_id | text | catálogo `nexum-terra/data/clans.json`; debe pertenecer a `kingdom_id`. Skills del clan vacías en primeras etapas; el tick no las aplica |
-| honor | int | default 0. Misiones (cuando existan). GDD §11.6 |
+| honor | int | default 0. Misiones y PvP según GDD §11.6 y §12.1 / §12.5 |
 | kills | int | default 0. Asesinatos persistidos (rooms PvP en A; no lobby) |
 | kingdom_rank_id | text | default `novice`. Catálogo `nexum-terra/data/kingdom-ranks.json`. GDD §11.7 |
 | level | int | default 1 |
@@ -914,8 +914,9 @@ for each tick:
   3. resolver skills (cast, proyectiles)
   4. hit detection (shapes); choque melee vs melee si aplica (`docs/GDD.md` §9.6)
   5. aplicar daño (canales maná/stamina/vitalidad y overflow; `docs/GDD.md` §6), guardia y CC
-  6. KO (vitalidad 0) / respawn según ruleset
-  7. emitir eventos y snapshot
+  6. KO (vitalidad 0) / death / respawn según ruleset (`docs/GDD.md` §12.5; cadáver de mundo solo Etapa C)
+  7. regen si aplica (quieto 50 %, reposo, poción; `docs/GDD.md` §12.6)
+  8. emitir eventos y snapshot
 ```
 
 El mismo loop corre en lobby y en batalla. El ruleset apaga scoring, AI o persistencia.
