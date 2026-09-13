@@ -21,8 +21,9 @@ Norma completa: `PLAN.md` §28. Plantilla: [`_TEMPLATE.md`](./_TEMPLATE.md).
 | lobby | planned | [lobby.md](./lobby.md) | Godot session |
 | spectator | planned | [spectator.md](./spectator.md) | Godot + API |
 | client-input-ui | planned | [client-input-ui.md](./client-input-ui.md) | Godot cliente |
-| party | planned (Fase 5) | [party.md](./party.md) | backend |
-| world | planned (Fase 6+) | [world.md](./world.md) | Godot + backend |
+| party | planned (Etapa B / Fase 5) | [party.md](./party.md) | backend |
+| dungeons | planned (Etapa B instancia; spawn de mapa **C**) | [dungeons.md](./dungeons.md) | Godot + backend |
+| world | planned (**Etapa C congelada**) | [world.md](./world.md) | Godot + backend |
 
 Al crear un módulo que no esté en la tabla: añadir fila **y** archivo en el mismo cambio que el código.
 

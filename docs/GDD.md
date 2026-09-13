@@ -2,40 +2,48 @@
 
 **Este archivo manda sobre fantasía, builds, stats, items, skills y sensación de combate.** La arquitectura (sesiones, EntityID, Postgres vs catálogo) está en `PLAN.md`. Cómo está implementado cada sistema en código: `docs/modules/`. Si un número de balance cambia, se edita aquí, el module doc si cambia el flujo, y luego `nexum-terra/data/`. Si cambia *cómo se persiste o se simula*, se edita `PLAN.md`.
 
-Fuentes actuales: GDD Notion, Gameplay, Daño y Build, Clanes, cinco reinos, Elementos y los cuatro básicos, Items y Crafting, Pasivas, Sistema de Puntos, Sistema de Rebirth, Obtención de Skills (2026-09-13). Otras páginas de Notion siguen sin volcar.
+Fuentes actuales: GDD Notion, Gameplay, Daño y Build, Clanes, cinco reinos, Elementos y los cuatro básicos, Items y Crafting, Pasivas, Sistema de Puntos, Sistema de Rebirth, Obtención de Skills, Sistema de Zonas, Dungeons (2026-09-13). Otras páginas de Notion siguen sin volcar.
 
-Estado: **normativo en lo escrito; incompleto en sistemas con página pendiente.** Caps base de maná / stamina / vitalidad y el modelo de daño estático + % están cerrados en §6. Calidad, nivel I–V, crafting de atributos, orbes de uso y mercado de jugadores están en §8.10–8.18 (no se simulan en Fases 1–4). Tasas de sprint, regeneración y % exactos por roll de atributo siguen abiertos.
+Estado: **normativo en lo escrito; incompleto en sistemas con página pendiente.** Caps base de maná / stamina / vitalidad y el modelo de daño estático + % están cerrados en §6. Calidad, nivel I–V, crafting de atributos, orbes de uso y mercado de jugadores están en §8.10–8.18 (Etapa B, no se simulan en Etapa A). Tasas de sprint, regeneración y % exactos por roll de atributo siguen abiertos. Mazmorras: §16 (instancia en B; spawn de mundo en C). Sistema de zonas / overworld: §15, **congelado** (Etapa C).
 
-Inspiración de ritmo (no de lore ni de sistemas): [StormEdge](https://store.steampowered.com/app/2321350/StormEdge/). Acción frenética, mundo abierto partido en regiones para rendimiento.
+Inspiración de ritmo (no de lore ni de calendario): [StormEdge](https://store.steampowered.com/app/2321350/StormEdge/). Acción frenética. El overworld partido en regiones es **Etapa C** (`PLAN.md` §18), no el juego que se construye ahora.
 
 ---
 
 ## 0. Alcance por etapas
 
-Las **primeras etapas** (lobby, práctica, PvP instanciado: Fases 1–4 de `PLAN.md`) **no** entregan el build completo. El modelo de personaje *admite* esas piezas más adelante; el catálogo y el tick no las simulan todavía.
+Tres eras, alineadas con `PLAN.md` §1.1. **No se mezclan.** El modelo de personaje *admite* piezas futuras; el catálogo y el tick no las simulan hasta su era.
 
-| Pieza | Primeras etapas | Etapas siguientes (contenido continuo) |
+| Era | Qué es | Cuándo |
 | --- | --- | --- |
-| Identidad: nombre, apariencia, `kingdom_id`, `clan_id` | sí (1 reino jugable + 1 clan de ese reino) | skills/pasivas/activas del clan |
-| Chat de distancia con gentilicio / nombre | sí (reglas §4) | amigos + olvido: ya en §4 |
-| Melee, guardia, dash, hotbar, swap de arma | sí | combos mágicos / elemento |
-| Tres vitals + daño estático + % de equipo | sí (§6) | pasivas de clan/elemento/profesión |
-| Equipo (armadura + armas) | sí, slots de §8 | orbes, anillos, collar, calidad/nivel, crafting |
-| Skills genéticas de clan (activas/pasivas) | no; catálogo vacío | sí |
-| Elementos (orbes, crafting, ciclo, skills básicas) | reglas en §8.6–8.9 y §10.1; no se simulan aún | sí |
-| Crafting de atributos, subida de nivel de ítem, mercado | no | sí (§8.10–8.18) |
-| Profesiones | no | sí |
-| Rebirths y pasivas especiales de rebirth | no | sí |
-| Árbol de puntos de pasivas / grind de activas en PvE | no | sí (PVE/mundo) |
-| Misiones, rangos, divisiones, dungeons, zonas, death/loot, etc. | KO a vitalidad 0 sí (§6) | el resto, al volcar cada doc |
+| **A — Rooms** | Lobby, práctica, PvP instanciado (Fases 1–4) | Ahora |
+| **B — Mazmorras + meta** | Dungeons en instancia + build, inventario, mercado, clanes (skills), etc. | Tras **jugar** A |
+| **C — Open world** | Regiones, zonas de color, conquista, loot de cadáver en overworld | Tras **meses** de B y **decisión explícita** |
 
-Todo es reemplazable en una build **excepto el clan en el que naces**, hasta un rebirth (§11.3). En primeras etapas ese ancla ya se elige; aún no otorga skills.
+| Pieza | Etapa A (rooms) | Etapa B (mazmorras + meta) | Etapa C (open world) |
+| --- | --- | --- | --- |
+| Identidad: nombre, apariencia, `kingdom_id`, `clan_id` | sí (1 reino jugable + 1 clan de ese reino) | skills/pasivas/activas del clan | — (ya en B) |
+| Chat de distancia con gentilicio / nombre | sí (reglas §4) | amigos + olvido: ya en §4 | chat por zona/región |
+| Melee, guardia, dash, hotbar, swap de arma | sí | combos mágicos / elemento | — |
+| Tres vitals + daño estático + % de equipo | sí (§6) | pasivas de clan/elemento/profesión | — |
+| Equipo (armadura + armas) | sí, slots de §8 | orbes, anillos, collar, calidad/nivel, crafting | — |
+| Skills genéticas de clan (activas/pasivas) | no; catálogo vacío | sí | — |
+| Elementos (orbes, crafting, ciclo, skills básicas) | reglas en §8.6–8.9 y §10.1; no se simulan aún | sí | — |
+| Crafting de atributos, subida de nivel de ítem, mercado | no | sí (§8.10–8.18) | se **reutiliza**; impuestos de zona → reino |
+| Profesiones | no | sí | — |
+| Rebirths y pasivas especiales de rebirth | no | sí | — |
+| Árbol de puntos / grind de activas | no | sí (PVE de mazmorra) | grind también en overworld cuando exista |
+| Mazmorras instanciadas | no | sí: **rooms desde el lobby** (tipos y recompensas §16) | mismas instancias; el **portal** spawnea en zonas del overworld (§16.1, §16.3). Se **sale** del shard al battle node |
+| Misiones, rangos de reino, renegados, logout bajo ataque | no | no (salvo lo que se vuelque como meta de B) | al volcar cada doc; son de mundo |
+| Sistema de zonas, regiones, conquista, robo en cadáveres de mundo | **no** | **no** | sí (§15). **Prohibido** prototipar en A/B |
+
+Todo es reemplazable en una build **excepto el clan en el que naces**, hasta un rebirth (§11.3). En Etapa A ese ancla ya se elige; aún no otorga skills.
 
 ---
 
 ## 1. Pitch y fantasía
 
-Nexum Terra es un **RPG online de acción** con mundo abierto dividido en regiones. Mezcla culturas y épocas: hierro, armas de fuego, lo arcaico y lo inteligente en el mismo suelo. El jugador arma el personaje que quiera; farmer, guerrero o millonario **todos pelean** (defender territorio, sobrevivir, o lo que el mundo pida).
+Nexum Terra es un **RPG online de acción**. La **fantasía** es un mundo abierto dividido en regiones (culturas y épocas en el mismo suelo). El **producto que se construye** es, en este orden: rooms de combate → mazmorras con metajuego → y solo después, si se decide por escrito, ese overworld. Farmer, guerrero o millonario **todos pelean**; en A/B eso ocurre en instancias, no en el campo.
 
 La magia es “la ciencia” de este mundo: **todos son magos**, aunque el primer recorte de combate sea melee + movilidad + hotbar.
 
@@ -83,7 +91,7 @@ Al crear personaje el jugador elige **un** reino jugable y **un** clan de ese re
 
 La fantasía de cada clan (ojos, insectos, cristales, etc.) se escribe aquí para no perderla. **No se implementa** hasta que existan entradas de skill en data.
 
-Idea de mundo (no primera etapa): **tiendas de ropa distintas por reino**. Vestirte de ninja sin ser de Aerion implica ir a comprar allá.
+Idea de mundo (Etapa C, no A ni B): **tiendas de ropa distintas por reino**. Vestirte de ninja sin ser de Aerion implica ir a comprar allá.
 
 Movilidad citada en el GDD original (dash samurái / Kawarimi / Fontain): documentada para más adelante. En primeras etapas el dash de combate, si existe, es un skill genérico de kit, no un racial del reino.
 
@@ -91,7 +99,7 @@ Movilidad citada en el GDD original (dash samurái / Kawarimi / Fontain): docume
 
 Ciudad antigua del **shogunato**. Murallas de índice Kamakura. Colores **negro y blanco**. Época: pasado. Hostilidad: **neutral**. Arquitectura de samurái: madera alzada contra inundaciones, paredes que rodean el área frente a enemigos del exterior.
 
-El ambiente debe **desincentivar peleas** sin quitar la posibilidad de hacer daño: penalizaciones graves (p. ej. un NPC muy fuerte que parta al agresor). Eso es regla de zona, no de create. Dash / samurái asociado en fuentes previas; no se otorga ahora.
+El ambiente de **ciudad** en overworld es **zona celeste** (§15.2): no se ataca y no se usan habilidades. Eso sustituye la idea previa de “puedes pegar pero un NPC te parte”. Fuera de Etapa C, Aurora es solo identidad/lore (GMs en create). Dash / samurái asociado en fuentes previas; no se otorga ahora.
 
 Gentilicio de chat: no aplica a jugadores (no nacen aquí).
 
@@ -586,7 +594,7 @@ No se detalla si esos fallos son excluyentes o acumulativos; al implementar, un 
 
 ### 8.15 Secretos de crafting
 
-Habrá secretos de mundo: p. ej. **estatuas mágicas** que incrementan el % de éxito. Objetos específicos en el craft sesgan un atributo concreto (escudo + gema dorada → reducción de daño; arma + piedra fina → aumento de daño). Lista cerrada de secretos: cuando exista contenido de zona, no ahora.
+Habrá secretos de mundo (Etapa C): p. ej. **estatuas mágicas** que incrementan el % de éxito. Objetos específicos en el craft sesgan un atributo concreto (escudo + gema dorada → reducción de daño; arma + piedra fina → aumento de daño). Lista cerrada de secretos: con contenido de zona, no en A/B. Las estatuas de **conquista** de §15.3 son otro sistema; no mezclarlas con estas.
 
 ### 8.16 Sets — Armaduras de Fontaine
 
@@ -596,7 +604,7 @@ Habrá secretos de mundo: p. ej. **estatuas mágicas** que incrementan el % de �
 
 Distintos de la **fusión a compuesto** (§8.7). Estos orbes se **craftean con grind** y se venden; el mercado de jugadores es el sink/source principal.
 
-**Orbes de elemento** (equipables / habilitan skills; precio de referencia **15 000 Hesedias** = recompensa de **15 dungeons verdes** enteras):
+**Orbes de elemento** (equipables / habilitan skills; precio de referencia de mercado **15 000 Hesedias**). Relación con grind de mazmorra: §16.5. Una verde enterada paga **1 500** Hes de cofres (15 verdes = **22 500**, no 15 000); al implementar economía, **reconciliar** este precio con esas tablas. La fuente de azules habla de “chance” de comprar un orbe con **10 azules enteras** (hay contienda; no es un precio fijo).
 
 | Orbe | Efecto |
 | --- | --- |
@@ -811,7 +819,7 @@ Obtención: subir de **rango** (cantidades fijas), eventos, misiones (probabilid
 
 Ramas I→V. Nivel I desbloquea II, etc., salvo requisitos extra anotados. Ids como en la fuente. Se **entrenan** (uso / kills); los puntos de habilidad pueden adelantar, no son el requisito. Esto **no** es el mismo sistema que las profesiones Médico / Espadachín / Sensor (§12); no fusionar. Las skills **elementales** no viven aquí: se compran con puntos (§11.1, §11.5).
 
-Este árbol y las pasivas especiales de rebirth se seguirán afinando al implementar mundo/PVE. No simular en Fases 1–4.
+Este árbol y las pasivas especiales de rebirth se seguirán afinando al implementar **Etapa B** (PVE de mazmorra / meta). No simular en Fases 1–4. No esperar al overworld.
 
 #### General
 
@@ -899,7 +907,7 @@ Patrón (ejemplo de diseño, no catálogo cerrado):
 
 La UI de la fuente es del estilo: `Reducción de cooldown (10%) (0/10) (Aumenta 1% por cada punto de rebirth)`.
 
-El resto del catálogo está en planificación. No inventar más filas. Se irá cerrando al desarrollar mundo/rebirth, no en Fases 1–4.
+El resto del catálogo está en planificación. No inventar más filas. Se irá cerrando al desarrollar rebirth en **Etapa B**, no en Fases 1–4 ni en C.
 
 ### 11.5 Obtención de skills
 
@@ -933,13 +941,13 @@ Hay diseño en Notion que **no** está en los PDF volcados. Hasta el siguiente d
 | Rangos de reinos | mundo | [Rangos de Reinos](https://app.notion.com/p/Rangos-de-Reinos-2891e055ee8d8107a6eadb40e938c9fc?pvs=21) |
 | Divisiones | PvP / mundo | [Divisiones](https://app.notion.com/p/Sistema-de-Divisiones-2891e055ee8d8171adcddabcdc9ee393?pvs=21) |
 | Renegados | mundo | [Renegados](https://app.notion.com/p/Sistema-de-Renegados-2891e055ee8d811b9ba3c68c9c51b4e8?pvs=21) |
-| Robo | mundo | [Robo](https://app.notion.com/p/Sistema-de-Robo-2891e055ee8d81c4aa95d08690fc7bcb?pvs=21) |
+| Robo | Etapa C (cadáveres; se enlaza a §15) | [Robo](https://app.notion.com/p/Sistema-de-Robo-2891e055ee8d81c4aa95d08690fc7bcb?pvs=21) |
 | KO y Death | todas | [KO y Death](https://app.notion.com/p/Sistema-de-KO-y-Death-2891e055ee8d819a8269d89a6d3fabaf?pvs=21) |
 | Regeneración | combate | [Regeneración](https://app.notion.com/p/Sistema-de-Regeneraci-n-2891e055ee8d8173a477eb396bca8b6f?pvs=21) |
 | Logout bajo ataque | mundo | [Logout bajo ataque](https://app.notion.com/p/Sistema-de-Logout-Bajo-Ataque-2891e055ee8d816f9acbc7f44028196c?pvs=21) |
 | Órdenes | mundo / party | [Órdenes](https://app.notion.com/p/Sistema-de-rdenes-2891e055ee8d8101b7a0f3d0f391aa65?pvs=21) |
-| Zonas | mundo | [Zonas](https://app.notion.com/p/Sistema-de-Zonas-2891e055ee8d81588edce4a3132073d2?pvs=21) |
-| Dungeons | Fase 5+ | [Dungeons](https://app.notion.com/p/Dungeons-2891e055ee8d81a28844e2edf7155084?pvs=21) |
+| Zonas | **Etapa C** (volcado en §15) | [Zonas](https://app.notion.com/p/Sistema-de-Zonas-2891e055ee8d81588edce4a3132073d2?pvs=21) |
+| Dungeons | **Etapa B** instancia; spawn en mapa **Etapa C** (volcado en §16) | [Dungeons](https://app.notion.com/p/Dungeons-2891e055ee8d81a28844e2edf7155084?pvs=21) |
 | Pasivas especiales (resto del catálogo) | largo plazo | [Pasivas especiales](https://app.notion.com/p/Pasivas-Especiales-2891e055ee8d8187a6adfd3f1464d662?pvs=21) — patrón y ejemplo en §11.4 |
 | Profesiones | largo plazo | [Médico](https://app.notion.com/p/M-dico-2891e055ee8d81469a7ec0a5834ac4ee?pvs=21), [Espadachín](https://app.notion.com/p/Espadach-n-2891e055ee8d81989991f2e73c183956?pvs=21), [Sensor](https://app.notion.com/p/Sensor-2891e055ee8d81ad9844f33f42e312b7?pvs=21) |
 | Skills de clan | cuando se activen | [Omnivisus](https://app.notion.com/p/Omnivisus-Skills-2891e055ee8d81bca43ef96c5cc18267?pvs=21), [Gadgetrix](https://app.notion.com/p/Gadgetrix-Skills-2891e055ee8d81fd9507c492928316b8?pvs=21), [Entomante](https://app.notion.com/p/Entomante-Skills-2891e055ee8d8108bdb5d54ffc692d91?pvs=21), [Nachtsoldaten](https://app.notion.com/p/Nachtsoldaten-Skills-2891e055ee8d8156b831cbf162e250cd?pvs=21), [Pulmonarius](https://app.notion.com/p/Pulmonarius-Skills-2891e055ee8d8173a00df68feceaf190?pvs=21), [Sangrafilos](https://app.notion.com/p/Sangrafilos-Skills-2891e055ee8d8117af0bd8299cd1546b?pvs=21), [Umbromante](https://app.notion.com/p/Umbromante-Skills-2891e055ee8d818aab16ee84dfac6767?pvs=21), [Geisteswaffen](https://app.notion.com/p/Geisteswaffen-Skills-2891e055ee8d81ae9388e1e94d8502bf?pvs=21). El resto de clanes aún no tiene página volcada. |
@@ -985,4 +993,171 @@ Bandas sonoras citadas: **Base**; **Base Boss — Tenebroso — Acción**. Catá
 - [ ] Quinto anillo de pureza y el “Anillo de…” cortado
 - [ ] Prime/Titan/Arconte por reino
 - [ ] Campos extra del territorio de Fontaine (además del área alien)
-- [ ] Primera skill de clan: llenar `skills` en `clans.json` + GDD, no un `if` en el player
+- [ ] Primera skill de clan: llenar `skills` en `clans.json` + GDD, no un `if` en el player (Etapa B)
+- [ ] Etapa C: lista cerrada de regiones (ids, adyacencia, qué shard); no inventar el mapa en A/B
+- [ ] Etapa C: elegir el split de tesorería al conquistar todos los territorios (§15.4)
+- [ ] Volcar Sistema de Robo (cadáveres) y engancharlo a los % de §15.2
+- [ ] Reconciliar precio de orbe elemental (15 000 Hes) con tablas de cofres §16.5
+- [ ] KO/Death en mazmorra (página pendiente) vs respawn en portal §16.4
+- [ ] Layouts de verde y roja (asentamientos / jefes) más allá de lo cerrado en azul §16.5
+- [ ] Catálogo de drops de jefe (además de Hesedias de cofre)
+- [ ] Eventos que disparan mazmorras globales §16.6
+
+---
+
+## 15. Mundo abierto, regiones y zonas (Etapa C, congelado)
+
+**No se implementa** en Etapa A ni B. Arquitectura y candado: `PLAN.md` §18. Este apartado guarda el diseño para cuando el equipo escriba el ADR de desbloqueo, **meses** después de mazmorras + meta jugables.
+
+El sistema de zonas se vincula al **Sistema de Robo** en cadáveres (página Notion aún no volcada). Los % de pérdida de Hesedias e ítems de esta sección son la regla de zona; el flujo de saqueo (quién lootea, ventana de tiempo, KO vs death) se copia de Robo cuando exista, no se inventa aquí.
+
+### 15.1 Regiones (no un mapa único)
+
+El overworld se parte en **varias regiones** separadas:
+
+- **Optimización:** cada región es su propio shard de simulación. No se carga ni se replica el continente entero. AOI recorta entidades *dentro* de la región (`PLAN.md` §18.2).
+- **Gameplay:** viajar entre regiones es cambio de sesión. Recursos, precio de territorio y densidad de peligro pueden diferir. Las reglas de color de zona aplican **dentro** de cada región.
+
+Lista de regiones (ids, adyacencia, arte): **pendiente**. No se dibuja ni se mete TileMap “de prueba” en el cliente de rooms.
+
+Mazmorras y arenas **no** son regiones: siguen siendo battle nodes instanciados. En C se entra igual que hoy se sale del lobby.
+
+### 15.2 Colores de zona
+
+Todo el overworld es **PvP 100%** excepto la ciudad de **Aurora**. Aurora debe ser **gigante**: honor al reino más poderoso y lugar tranquilo.
+
+| Color | Dónde | Combate | Hesedias en mano al morir | Ítems al morir | Territorios | Recursos / drops |
+| --- | --- | --- | --- | --- | --- | --- |
+| **Celeste** | Solo Aurora | No se puede atacar. No se puede usar **ninguna** habilidad | N/A (no hay combate) | N/A | N/A | Ciudad; no es farmeo de zona |
+| **Verde** | Overworld | Puedes morir | Pierdes **50%** | No pierdes ítems del inventario | Más baratos que amarilla | Más comunes. Muy poca probabilidad de loot de zona roja |
+| **Amarilla** | Overworld | Puedes morir | Pierdes **75%** | Puedes perder **la mitad** de los ítems **no equipados** | Más baratos que roja | Más importantes |
+| **Roja** | Overworld | Puedes morir | Pierdes **100%** | Puedes perder **todos** los ítems, **equipados y no** | Los más caros | Máxima calidad |
+
+“Hesedias en mano” ≠ Hesedias en banco/almacén. El detalle de dónde se guarda moneda es Etapa B (economía); en C esta tabla consume ese modelo.
+
+KO de combate en rooms (A/B) **no** aplica esta tabla. Rooms no tienen color de zona.
+
+### 15.3 Conquista de territorios
+
+Se conquistan territorios **dispersando el maná** de la **estatua de poder** del territorio (estilo capture zone de MOBA).
+
+| Regla | Valor |
+| --- | --- |
+| Tiempo para conquistar | **3 minutos** |
+| Recaptura (misma facción u otra) | Tras **12 horas** |
+| Al **50%** de captura | Se dispersa el maná del territorio; pasa a **neutral** (nadie lo posee) |
+| Cap de jugadores otorgando maná | **10** por estatua |
+| Facción enemiga en rango | La captura **se detiene**. Si la otra facción no está y los enemigos sí, **baja** el porcentaje |
+| A **0%** + **30 s** | La facción que capturaba **pierde la oportunidad** de capturar |
+| KO | Mientras estás KO **no** capturas (evitar capturar durante ~25 s de KO) |
+
+### 15.4 Beneficios de conquista
+
+- **% de suerte** de farmeo en esa zona (número exacto: al implementar C).
+- **Todo el dinero** generado ahí (NPC, impuestos, tiendas, etc.) va al **reino**.
+- Los reinos tienen **gestión automática**. A partir de cierto rango se ve el estado (si falta dinero, si no cubre mantenimiento: radar, mejoras, etc.). Rangos de reino: página Notion pendiente.
+
+**Si un reino conquista todos los territorios:** los demás pierden **50%** de su tesorería, entregada al conquistador. Cómo se reparte ese botín (elegir **una** al abrir C; no las dos):
+
+1. El top **#10** de jugadores que más contribuyeron al reino recibe **una décima parte** de ese dinero.
+2. El **50%** del botín se reparte entre las **órdenes** que conquistaron territorios, **dividido por la cantidad de zonas**. Las órdenes con más territorios reciben más.
+
+### 15.5 Qué no es esto
+
+- El lobby de Etapa A no es zona celeste ni proto-Aurora jugable como overworld.
+- El **interior** de una mazmorra no es un tile de zona: cofres y jefes son de instancia (§16). En Etapa C, al morir **dentro**, las penalizaciones de Hesedias/ítems siguen el **color de la zona donde spawneó el portal** (§16.4), no un color pintado en el mapa de la mazmorra.
+- No se copian estas reglas al tick de `pvp_duel` / `pvp_arena`.
+
+---
+
+## 16. Mazmorras
+
+Fuente: página Notion *Dungeons*. El **contenido de instancia** (tipos, jefes, cofres, PvP interior) es **Etapa B**. El **spawn aleatorio en el overworld** es **Etapa C** (`PLAN.md` §18). No se prototipa portal de mundo en A/B.
+
+Arquitectura: misma tubería que un room PvP (`SessionKind.pve_dungeon`, battle node). No es una región ni un `world_shard`.
+
+### 16.1 Cómo se entra (por era)
+
+| Era | Cómo llega el jugador | Qué no hay |
+| --- | --- | --- |
+| **A — Rooms** | Nada. No hay mazmorra. | — |
+| **B — Mazmorras + meta** | **Room desde el lobby**, como el PvP: cola / party / sala → orquestar instancia. Los tres tipos (verde / azul / roja) y las globales de evento existen como **modos de room**, no como portales en un mapa. | Ciclo de spawn en zonas, carrera “el que llega primero”, entrada que desaparece del overworld, bloqueo por *Bajo Ataque* de mundo |
+| **C — Open world** | Las mismas instancias. El portal **aparece en el mapa** (zonas según tipo). Quien llega primero puede farmear. Entrar = salir del shard al battle node (igual que salir del lobby). | No se reescribe el interior; se añade el spawn |
+
+### 16.2 Tipos
+
+Los tipos varían, en C, según **la zona donde aparezca el portal**. En B el tipo se **elige o rota en el lobby**; las restricciones de zona no aplican porque no hay overworld.
+
+#### Verdes
+
+- **C (spawn):** zonas **verdes y amarillas**.
+- **Jugadores:** solo **1**. La entrada **desaparece** cuando un jugador entra (en C: del mapa; en B: la instancia es solo).
+- Un jugador **no puede entrar si está Bajo Ataque** (flag de mundo; Etapa C. En B no hay combate de overworld).
+
+#### Azules
+
+- **C (spawn):** cualquier zona **PvP** (verde / amarilla / roja; no celeste).
+- Aceptan **varias personas**. Los cofres de camino quedan **vacíos si alguien ya los tomó**.
+- Cofres de **jefe** dan recompensa a **todos los que participaron** del jefe. En el camino hay recompensas menores matando a los pequeños.
+- **3 jefes**, cada uno más fuerte que el anterior. Diseño: **no es posible matarlos solo**.
+- **PvP permitido** dentro: parties vs parties por quedarse la dungeon.
+
+#### Rojas
+
+- **C (spawn):** zonas **amarillas y rojas**. Dificultad y recompensas **más altas** que las azules.
+- PvP permitido dentro. Las **muertes** (Hesedias / ítems) siguen la zona de aparición del portal (§16.4).
+- Niveles más difíciles y mejor loot.
+
+### 16.3 Ciclos de spawn (solo Etapa C)
+
+En el overworld las mazmorras aparecen así (totales = 24 h a ese ritmo, sin eventos extra):
+
+| Tipo | Cada | Por día |
+| --- | --- | --- |
+| Verde | 15 minutos | 96 |
+| Azul | 1 hora | 24 |
+| Roja | 2 horas | 12 |
+
+En Etapa B **no** hay este reloj de mapa. La oferta de rooms del lobby la cierra el equipo al implementar (colas, rotación, límite de instancias); no se copia este calendario al matchmaking “para simular el MMO”.
+
+### 16.4 Qué pasa si te matan
+
+Varía según la **zona de aparición del portal** (colores y %: §15.2). KO/Death de combate (página Notion pendiente) no se inventa aquí.
+
+Comportamiento de **reentrada** (pensado para C, con portal en el mundo):
+
+- Reapareces **fuera** y puedes volver a la entrada para reunirte con tu party.
+- Si **matan a todos** los miembros de la party **dentro**, **no pueden volver a entrar**. Evita hostigar a quienes ya ganaron el combate reentrando en bucle.
+
+En Etapa B (room desde lobby, sin portal): la reentrada al battle node la define el ruleset al implementar (mismo espíritu: wipe de party cierra el run; no inventar un “portal invisible” en el lobby). Detalle fino: al volcar KO y Death.
+
+### 16.5 Recompensas y recorrido
+
+Hesedias de cofre son las de la fuente. **Drops** de jefe: catálogo abierto (no inventar ítems).
+
+| Tipo | Cofres de camino | Cofre(s) de jefe | Recorrido cerrado en fuente |
+| --- | --- | --- | --- |
+| Verde | 3 × **250** Hes | 1 × **750** Hes + drops | — |
+| Azul | 8 × **350** Hes | 3 × **1 000** Hes + drops | 2 asentamientos → jefe → 3 asentamientos → jefe → 3 asentamientos → jefe |
+| Roja | 12 × **500** Hes | 3 × **1 500** Hes + drops | Al matar al **último** jefe se **bloquea la salida 2 minutos** (ventana de PvP para robar ítems matando) |
+
+Totales de cofres si se lootea todo (sin drops): verde **1 500**; azul **5 800**; roja **10 500**.
+
+Fantasía de grind (azules): un jugador tiene **chance** de juntar para un orbe elemental con **10 azules enteras**, pero **no siempre**: otras personas entran a limpiar. No tratar esas 10 runs como precio de tienda.
+
+### 16.6 Mazmorras globales
+
+Dungeons de **eventos importantes**: mucho más grandes; varias dificultades en una (fantasía: “5 dungeons distintas en 1”). Al final, bosses de los **reyes** con **almas corruptas**.
+
+- Aparecen **cerca de los 4 reinos**.
+- El boss final es **uno de los antiguos reyes** según el reino.
+
+**C:** el evento spawnea cerca de esos reinos en el mapa. **B:** puede existir como **room de evento** desde el lobby (mismo interior); la colocación geográfica espera el overworld. No implementar mapa de reinos para “colocar” el evento en A/B.
+
+### 16.7 Qué no se inventa aquí
+
+- Layout tile a tile de verdes, rojas y globales (salvo el orden de asentamientos/jefes de azul).
+- Lista de drops no-Hes.
+- IA, skills de monstruo, HP de jefes.
+- UI de cola del lobby (marca: `docs/brand/BRAND.md`).
+- Código de spawn, AOI o zonas: `PLAN.md` §18.

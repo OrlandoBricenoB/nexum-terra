@@ -4,8 +4,8 @@
 
 - **Nombre:** Nexum Terra
 - **Género actual:** Top-down 2D, lobby social + combates instanciados (PvP primero; PvE después)
-- **Destino:** Open world MMORPG
-- **Principio de producto:** crecer por capas. El lobby, las salas PvP y las mazmorras no son productos distintos: son **sesiones** del mismo núcleo. El mundo abierto será otra sesión, más grande y persistente.
+- **Destino (congelado):** Open world MMORPG por **regiones** (shards), no un mapa único. No se construye hasta una **decisión explícita**.
+- **Principio de producto:** crecer por capas y **no mezclar eras**. Primero un juego de **solo rooms** de combate. Después mazmorras **y** el metajuego (build, inventario, mercado, clanes, etc.). El mundo abierto es otra sesión, más grande y persistente, y **no** se adelanta “un poco” en las eras anteriores.
 
 ---
 
@@ -44,24 +44,27 @@
 
 ## 1. Visión y norte
 
-Nexum Terra empieza como un **hub vivo**: una habitación (lobby) donde el jugador se mueve, habla, practica ataques contra dummies y busca partida. Desde ese hub se entra a **rooms de combate** (1v1, 5v5) y, más adelante, a **rooms de mazmorra** en equipo. El destino es un **mundo abierto persistente** con las mismas reglas de movimiento, combate, inventario y social.
+Nexum Terra empieza como un **hub vivo**: una habitación (lobby) donde el jugador se mueve, habla, practica ataques contra dummies y busca partida. Desde ese hub se entra a **rooms de combate** (1v1, 5v5). Cuando ese recorte esté **jugado y estable**, se añaden **rooms de mazmorra** y el metajuego (build, inventario, mercado, clanes, etc.). El destino de fantasía es un **mundo abierto persistente por regiones**, con las mismas reglas de movimiento y combate; **no se implementa** hasta que el equipo lo decida por escrito, meses después de la era de mazmorras.
 
-La trampa a evitar: construir un “juego de salas” rígido y luego romperlo para el MMO. Por eso:
+La trampa a evitar: construir un “juego de salas” rígido y luego romperlo para el MMO. Por eso el núcleo admite un futuro `world_shard`. La trampa inversa es igual de cara: **meter zonas, loot de cadáver, conquista o mapas de región** mientras aún no hay un juego de rooms. Por eso:
 
 - Toda instancia (lobby, PvP, PvE, futuro shard de mundo) es una **Session**.
 - Todo actor simulable (jugador, dummy, monstruo, jefe, NPC, proyectil con dueño) es una **Entity** con `EntityID`.
 - El combate, el movimiento y el ciclo de tick **no conocen** `PlayerID`. Conocen entidades, componentes y un ruleset.
 - El backend de cuentas, inventario, amigos y matchmaking **no conoce** Godot. Habla por puertos.
+- **Open world no se “deja a medias”.** Diseño en `docs/GDD.md` §15 y arquitectura en §18 de este PLAN. Código, mapas de región, flags de zona en el tick y AOI de mundo: **prohibidos** hasta el desbloqueo de la Etapa C.
 
 ### 1.1 Recorte de producto por etapa
 
-| Etapa | Lo que el jugador ve | Lo que el sistema es |
-| --- | --- | --- |
-| Ahora (Fases 1–4) | Login, lobby 2D, chat, práctica, colas, 1v1/5v5, espectador | Modular monolith + sesiones instanciadas |
-| Base completa + PvE (Fase 5) | Parties, mazmorras, IA con el mismo combate | Mismo núcleo; nuevo ruleset y mapas |
-| Transición MMO (Fases 6–8) | Zonas persistentes, AOI, economía, world bosses | Shards de mundo + instancias de mazmorra/PvP reutilizadas |
+Tres eras. No se pisan. La C no arranca por “quedó tiempo en el sprint”.
 
-Las mazmorras **no** se construyen hasta que el núcleo (auth, lobby, red, combate PvP, matchmaking, persistencia de resultados) esté sólido. El diseño, sin embargo, las contempla desde el día uno.
+| Etapa | Fases | Lo que el jugador ve | Lo que el sistema es | Cuándo |
+| --- | --- | --- | --- | --- |
+| **A — Rooms** | 1–4 | Login, lobby 2D, chat, práctica, colas, 1v1/5v5, espectador | Modular monolith + sesiones instanciadas | Ahora. Producto publicable al cerrar Fase 4 |
+| **B — Mazmorras + meta** | 5.x | Parties, **rooms de mazmorra desde el lobby**, IA; build, inventario, mercado, clanes y el resto del metajuego de `docs/GDD.md` que no sea mundo | Mismo núcleo; ruleset `pve_dungeon`; persistencia de inventario/economía | **Después** de probar el juego de solo rooms. No antes |
+| **C — Open world** | 6–8 | Regiones persistentes, sistema de zonas (celeste/verde/amarilla/roja), conquista, loot de cadáver en mundo | Shards **por región** + instancias de mazmorra/PvP reutilizadas | **Solo** tras meses de Etapa B y una **decisión explícita** (ADR en este PLAN). Ver §18 |
+
+Las mazmorras **no** se construyen hasta que el núcleo de rooms (auth, lobby, red, combate PvP, matchmaking, persistencia de resultados) esté sólido. En B se entra **igual que a un duelo**: desde el lobby a un battle node. El spawn aleatorio de portales en zonas del mapa es **Etapa C** (`docs/GDD.md` §16). El open world **no** se construye hasta que mazmorras + meta se hayan jugado y el equipo lo escriba aquí. El diseño de zonas y de esos spawns ya está en el GDD para no perderlo; eso **no** autoriza implementación.
 
 ---
 
@@ -72,12 +75,13 @@ Las mazmorras **no** se construyen hasta que el núcleo (auth, lobby, red, comba
 3. **Separación de planos de red.** Chat, auth, invitaciones y matchmaking van por **HTTP/WebSocket (Hono)**. Simulación (posiciones, inputs, hits) va por **red de Godot (ENet/UDP)**. Nunca se mezclan.
 4. **Hexágono por dominio.** Cada bounded context tiene núcleo puro, puertos (interfaces) y adaptadores (Hono, Postgres, Mongo, Docker, Godot). El dominio no importa Hono, Neon, Mongo ni nodos de Godot.
 5. **Contenido data-driven.** Habilidades, items, mapas, rulesets y spawns viven en datos versionados. Añadir una skill o un mapa no exige reescribir el loop de combate.
-6. **Una sesión, muchos rulesets.** Lobby, duelo, arena, mazmorra y mundo abierto cambian reglas, persistencia y visibilidad; no cambian el motor de tick.
+6. **Una sesión, muchos rulesets.** Lobby, duelo, arena y mazmorra cambian reglas; el motor de tick no. El ruleset de mundo abierto está **reservado** (Etapa C); no se registra ni se ejecuta antes del ADR de §18.
 7. **Contratos versionados.** REST, WS y paquetes de juego tienen esquema. Un cambio incompatible sube versión; no se “rompe y ya”.
 8. **Crecimiento vertical primero.** Un modular monolith bien partido. **No hay microservicios** hasta que una réplica del backend no baste. Dos entrypoints de deploy (Workers vs EC2) no son microservicios: son el mismo código con adaptadores distintos.
 9. **Fail closed.** Token inválido, instancia caída, puerto ocupado o tick atrasado: se rechaza o se cancela la sesión. No se “sigue igual”.
 10. **El PLAN manda.** Features nuevas se enganchan a un dominio existente o declaran uno nuevo. No se cuelan en controladores gordos ni en el `_process` del jugador.
 11. **Documentar al mismo tiempo que se construye.** Cada módulo/feature tiene un documento vivo en `docs/modules/`. Todo cambio de lógica de negocio, técnica o de gameplay se refleja ahí en el mismo cambio que el código. Código sin doc del módulo no está terminado.
+12. **Eras de producto no se adelantan.** A = rooms. B = mazmorras + meta. C = open world solo con decisión explícita. Diseño de C puede vivir en el GDD; código de C no.
 
 ---
 
@@ -184,8 +188,8 @@ Cada contexto tiene un idioma propio. No se mezclan términos (`Room` de chat �
 - **Lenguaje:** ItemDef, ItemInstance, EquipmentSlot, Currency, MarketListing, Snapshot.
 - **Regla:** el servidor de batalla recibe un **snapshot inmutable** del loadout al iniciar la sesión (mods **ya resueltos**: def + calidad/nivel/rolls). No escribe inventario a mitad de un 1v1. Al terminar, aplica un **delta** (recompensas, durabilidad futura, Hesedias) vía evento `SessionEnded`.
 - **Crafting y mercado** son casos de uso de este contexto (Hono/REST en Workers). No van por ENet. Al **listar** un ítem, sale del inventario (escrow en `market_listings`); el vendedor no lo equipa ni lo duplica. Compra válida con el vendedor **offline**.
-- **Por qué:** evita race conditions entre tick de combate y REST de inventario. Escala al MMO (el shard aplica drops igual: al morir el mob, evento → Inventory).
-- **Diseño de rolls, calidad y orbes de uso:** `docs/GDD.md` §8.10–8.18. No se implementa en Fases 1–4.
+- **Por qué:** evita race conditions entre tick de combate y REST de inventario. En mazmorras (Etapa B) y más tarde en shards (Etapa C) el drop es el mismo puerto: evento → Inventory.
+- **Diseño de rolls, calidad y orbes de uso:** `docs/GDD.md` §8.10–8.18. No se implementa en Fases 1–4 (Etapa A). Mercado y crafting completos = Etapa B, no open world.
 
 ### 4.4 Social
 
@@ -201,7 +205,7 @@ Cada contexto tiene un idioma propio. No se mezclan términos (`Room` de chat �
 
 ### 4.6 Party
 
-- **Responsabilidad:** grupo de 2–5 jugadores que viaja junto a una sesión PvE (y más adelante al mundo).
+- **Responsabilidad:** grupo de 2–5 jugadores que viaja junto a una sesión PvE (y, solo en Etapa C, al mundo).
 - **Lenguaje:** Party, PartyMember, Leader, ReadyState.
 - **Reutiliza:** el flujo de sala privada del matchmaking, no un sistema paralelo. En Fase 5, “sala privada → orquestar mapa dungeon” es un caso de uso de Party + Matchmaking + Orchestration.
 - **No se implementa hasta Fase 5**, pero el ID `party_id` ya existe como opcional en Session y Chat.
@@ -221,8 +225,8 @@ Cada contexto tiene un idioma propio. No se mezclan términos (`Room` de chat �
   - `lobby` — persistente, práctica, sin ranking
   - `pvp_duel` — 1v1
   - `pvp_arena` — 5v5
-  - `pve_dungeon` — Fase 5
-  - `world_shard` — Fases 6+
+  - `pve_dungeon` — Fase 5 (rooms desde lobby; en C el join sale del `world_shard` al mismo kind)
+  - `world_shard` — Etapa C (Fases 6+); **nombre reservado, sin implementación** hasta ADR de desbloqueo
   - `spectator_relay` — no es un proceso extra; es un rol de conexión sobre una sesión existente
 - **No simula el juego.** Solo crea, vigila y mata instancias.
 
@@ -244,11 +248,13 @@ Cada contexto tiene un idioma propio. No se mezclan términos (`Room` de chat �
 - **Lenguaje:** MatchRecord, ParticipantResult, Rating.
 - **El lobby de práctica no escribe aquí.** Daño a dummies es efímero.
 
-### 4.12 World (futuro, se declara ahora)
+### 4.12 World (Etapa C, congelado)
 
-- **Responsabilidad:** zonas, shards, interés espacial, persistencia de posición en el mundo, spawns de mundo.
-- **Lenguaje:** Zone, Shard, AOI, WorldPosition.
-- **Hasta Fase 6 no hay código**, pero `SessionKind.world_shard` y `Entity` con posición ya son el gancho.
+- **Responsabilidad (cuando se desbloquee):** regiones del overworld, shards, interés espacial, persistencia de posición, spawns de mundo, reglas de zona (PvP/loot) y conquista de territorios.
+- **Lenguaje:** Region, ZoneDanger (celeste/verde/amarilla/roja), Shard, AOI, WorldPosition, Territory, PowerStatue.
+- **Hasta el ADR de desbloqueo de Etapa C no hay código** de este contexto: ni mapas de región, ni AOI, ni flags de zona en el tick, ni cadáveres lootables de mundo, ni estatuas de conquista.
+- **Gancho permitido (sin implementar OpenWorld):** el enum puede listar `SessionKind.world_shard`; las entidades ya tienen posición. No se añade `ruleset open_world` ejecutable ni data de zonas.
+- **Regiones, no un mapa único.** Cada región es un shard (o un conjunto de shards) propio: recorta carga (optimización) y recorta el playground (gameplay: viajes, drops, conquista). Detalle de diseño: `docs/GDD.md` §15.
 
 ### 4.13 Mapa de dependencias permitidas
 
@@ -318,7 +324,7 @@ El lobby es una **Session persistente de práctica y social**. Misma entidad, mi
 - Dummies estáticos (AI nula o idle)
 - Cap de jugadores (si se llena: segundo proceso `lobby_2`, mismo patrón que un shard)
 
-Cuando llegue el open world, el cliente hará el mismo handshake contra un `world_shard` en lugar de (o además de) el lobby. El lobby puede convertirse en una ciudad dentro del mundo o permanecer como instancia social. **No se tira el código.**
+Cuando (y solo cuando) exista decisión de Etapa C, el cliente hará el mismo handshake contra un `world_shard` de **una región**. El lobby puede convertirse en una ciudad (Aurora u otra instancia social) o permanecer como room. **No se tira el código de rooms.** Hasta ese ADR, el lobby **no** es un proto-overworld: no hay peligro de zona, no hay conquista, no hay “salir a un campo”.
 
 ---
 
@@ -843,9 +849,11 @@ El mismo loop corre en lobby y en batalla. El ruleset apaga scoring, AI o persis
 | `pvp_duel` | sí | no | match_records | no | según modo |
 | `pvp_arena` | sí | no | match_records | no | round o none |
 | `pve_dungeon` | objetivos | sí | match + drops | configurable | checkpoints |
-| `open_world` | no (mundo) | sí | posición + drops | pvp-flag futuro | cementerio/ciudad |
+| `open_world` | **reservado Etapa C** | — | — | — | — |
 
-Añadir un modo nuevo = **nuevo ruleset + mapa + cola**, no un fork del motor.
+`open_world` no se implementa ni se registra en data hasta el ADR de §18.1. Cuando exista: sin scoring de arena; AI sí; persistencia de posición + drops; PvP según color de zona (GDD §15); respawn cementerio/ciudad.
+
+Añadir un modo nuevo = **nuevo ruleset + mapa + cola**, no un fork del motor. Un mapa de **región** no es un modo nuevo de rooms: es Etapa C.
 
 ### 13.4 Habilidades e items
 
@@ -938,7 +946,7 @@ Capa `adapters/input` normaliza a `Intent { move: Vector2, aim: Vector2, skills:
 - `Boot` → auth
 - `Lobby` → práctica + UI social
 - `Battle` → combate / espectador (misma escena, flag)
-- Futuro `World` → misma tubería de sesión
+- `World` → **Etapa C solamente.** Misma tubería de sesión, un mapa por región. No se crea la escena “para ir adelantando”.
 
 ### 15.4 Top-down 2D
 
@@ -968,8 +976,8 @@ Patrones de extensión previstos:
 | Un modo 2v2 | Queue nueva + ruleset (puede reutilizar arena) |
 | Guilds | Nuevo contexto Social/Guilds, canal chat, Postgres |
 | Crafting (orbes, atributos, nivel de ítem) | Inventory domain (REST) |
-| Mercado de jugadores / Hesedias | Inventory & Economy (`market_listings`, `character_wallets`) |
-| World boss | World shard + AI + Event bus → Inventory |
+| Mercado de jugadores / Hesedias | Inventory & Economy (`market_listings`, `character_wallets`) — **Etapa B**, no C |
+| World boss / zonas / conquista / regiones | **Etapa C.** No se engancha en Fases 1–5 |
 | Mobile stick | Solo `adapters/input` |
 | Redis matchmaking | Nuevo adapter de `MatchmakingStore` |
 
@@ -977,7 +985,7 @@ Patrones de extensión previstos:
 
 ## 17. Fases de construcción
 
-Cada fase cierra un corte jugable. No se adelanta PvE ni open world. Sí se dejan los ganchos (`EntityID`, `SessionKind`, `Ruleset`, `party_id` opcional).
+Cada fase cierra un corte jugable. No se adelanta PvE a Fases 1–4. **No se adelanta open world a ninguna fase de las Etapas A o B.** Sí se dejan ganchos de núcleo (`EntityID`, `SessionKind` listado, `Ruleset`, `party_id` opcional), no sistemas de mundo.
 
 ### Fase 0 — Andamiaje (corta, antes de Fase 1)
 
@@ -1039,52 +1047,84 @@ Objetivo: combate cerrado autoritativo.
 
 **Hecho cuando:** un 1v1 tiene ganador persistido, y un tercer cliente observa sin poder mover al luchador.
 
-### Fase 5 — PvE / mazmorras (después de la base)
+### Fase 5 — Etapa B: mazmorras y metajuego (después de rooms jugados)
 
-Objetivo: reutilizar, no reescribir.
+Objetivo: reutilizar el combate de rooms; **no** abrir el overworld.
+
+Esta fase es un **paquete de producto**, no un único sprint. Arranca cuando el juego de solo rooms (Fase 4) se ha podido **jugar de verdad**. Incluye, en el orden que el equipo cierre al entrar en B (pueden ser 5.1, 5.2, …):
 
 - AI controller sobre Entity (monstruos/jefes).
-- Party: reutilizar salas privadas (2–5) → `SessionKind.pve_dungeon`.
-- Mapas de mazmorra, objetivos, drops vía evento a Inventory (snapshot + delta al final o en checkpoints).
+- Party: reutilizar salas privadas (2–5) → `SessionKind.pve_dungeon`. Verdes son **1** jugador (`docs/GDD.md` §16.2).
+- Mapas de **mazmorra** (instancias), objetivos, drops vía evento a Inventory. Entrada **desde el lobby**, no desde un overworld.
+- Tipos verde / azul / roja y recompensas: GDD §16. **Fuera de Fase 5:** spawn periódico en zonas, carrera al portal, entrada que desaparece del mapa.
 - Chat de party.
+- Metajuego que el GDD ya describe y que **no** es mundo: build (calidad/nivel/crafting/orbes cuando toque), inventario persistente, mercado, skills de clan, profesiones, puntos/rebirth según el recorte que se elija al abrir B.
 
-**Hecho cuando:** un party de 2 entra a una mazmorra, mata un dummy-AI con el mismo sistema de daño que el PvP, y recibe un item al terminar.
+**Fuera de Fase 5:** cualquier mapa de región, zona de peligro, loot de cadáver de overworld, estatua de conquista, chat por zona de mundo, persistencia `world_x/world_y`, AOI.
 
-### Fuera de las 5 fases (planeado, no es un deadline)
+**Hecho cuando (mínimo de mazmorra):** un party de 2 entra a una mazmorra, mata un dummy-AI con el mismo sistema de daño que el PvP, y recibe un item al terminar. El “hecho” de mercado/clanes se define al partir 5.x; no se usa como excusa para abrir Etapa C.
 
-Ver sección 18. Las fases 6–8 son el **norte arquitectónico**, no un calendario. El juego es publicable y jugable al cerrar la Fase 4 (lobby + PvP + espectador). El open world puede tardar muchos meses o más; eso no retrasa el lanzamiento del recorte actual.
+### Fuera de las Etapas A y B (congelado)
+
+Ver sección 18. Las fases 6–8 **no son backlog activo**. El juego es publicable al cerrar la Fase 4. La Etapa B es el siguiente producto. El open world **espera una decisión explícita** tras meses de B.
 
 ---
 
-## 18. Camino a open world MMORPG
+## 18. Camino a open world MMORPG (Etapa C, congelada)
 
-El open world **no** es un lobby más grande con 10.000 CharacterBody2D replicados a todos. Es el mismo núcleo con **interés espacial (AOI)** y **persistencia de mundo**.
+El open world **no** es un lobby más grande con 10.000 CharacterBody2D replicados a todos. Es el mismo núcleo con **regiones separadas**, **interés espacial (AOI)** y **persistencia de mundo**. El diseño de peligro, loot y conquista está en `docs/GDD.md` §15. Esta sección solo dice **cómo se enchufa** y **cuándo está prohibido tocarlo**.
 
-**El producto que se “termina a tiempo” es el recorte de Fases 1–4 (y 5 si hay margen).** Mundo abierto no bloquea ese recorte. Si el calendario se acaba, se sigue con lobby + rooms; el código no se tira porque Session/Entity/Ruleset ya son el puente.
+### 18.1 Candado
 
-### Fase 6 — Shard de mundo mínimo
+| Regla | Detalle |
+| --- | --- |
+| Producto que se entrega primero | Etapa A (Fases 1–4): lobby + rooms PvP + espectador |
+| Siguiente producto | Etapa B (Fase 5.x): mazmorras **y** metajuego (build, inventario, mercado, clanes, …) |
+| Open world | **No** es “si hay margen”. **No** es un epic en el mismo tablero que rooms |
+| Desbloqueo | Una **decisión explícita**: ADR nuevo en §22 (o enmienda de ADR-010) que diga “se abre Etapa C”. Hasta entonces, PRs de mundo se rechazan |
+| Tiempo | Se espera **meses** de Etapa B jugable, no días |
+| Qué sí se puede ahora | Escribir/actualizar GDD §15–§16 y este §18. Reservar nombres (`world_shard`) |
+| Qué no | Mapas de región, TileMaps de overworld, `OpenWorld` ruleset, AOI, `world_x/world_y`, zonas en data, cadáveres de mundo, estatuas, chat `zone`, UI de conquista, “prototipo de campo detrás del lobby” |
 
-- `SessionKind.world_shard`
-- Mapa grande, cap de jugadores por shard
-- Persistir `world_x, world_y` en character
+Economía persistente (Hesedias, crafting, mercado) es **Etapa B**, no C. En C se reutiliza; no se espera al overworld para tener inventario.
+
+### 18.2 Regiones (optimización y gameplay)
+
+El overworld **no** es un único mapa continuo cargado entero.
+
+- El continente se parte en **varias regiones**. Cada región es (al menos) un `world_shard` con su mapa, su cap de jugadores y su proceso Godot.
+- **Optimización:** un shard no simula ni replica la otra región. AOI recorta aún más *dentro* de la región.
+- **Gameplay:** viajar entre regiones es un cambio de sesión (mismo handshake que lobby → arena). Drops, precio de territorio, densidad de recursos y facciones pueden diferir por región. Las reglas de **color de zona** (GDD §15) aplican *dentro* de cada región; Aurora es la única celeste.
+- Transferencia entre regiones = Fase 8 de esta etapa, no un portal improvisado en B.
+
+### 18.3 Norte técnico (solo válido tras el ADR de desbloqueo)
+
+#### Fase 6 — Shard de una región mínima
+
+- `SessionKind.world_shard` **implementado** (hoy solo el nombre)
+- Un mapa de **una** región, cap de jugadores por shard
+- Persistir posición de mundo en character (`region_id`, `world_x`, `world_y`)
 - AOI: cada cliente solo recibe snapshots de entidades cercanas
-- Instancias de mazmorra/PvP siguen existiendo: el jugador **sale del shard** hacia un battle node (igual que hoy sale del lobby)
+- Ruleset `open_world`: peligro de zona, loot de cadáver según color (GDD §15), sin scoring de arena
+- Instancias de mazmorra/PvP siguen existiendo: el jugador **sale del shard** hacia un battle node (igual que sale del lobby). Portales de mazmorra **spawnean en zonas** según tipo y ciclo (GDD §16.3); no se simula el interior en el shard.
 
-### Fase 7 — Contenido de mundo
+#### Fase 7 — Contenido de mundo (no el metajuego de B)
 
-- NPCs, quests (nuevo contexto `Quest`), spawns de mobs, economía (Hesedias, crafting de atributos, mercado offline GDD §8.10–8.18)
-- Canales de chat por zona
-- Flags de PvP mundial (opcional)
+- NPCs de overworld, quests (nuevo contexto `Quest`), spawns de mobs de mundo
+- Canales de chat por zona/región
+- Conquista de territorios (estatuas de poder, GDD §15.3)
+- World bosses
+- Reutilizar economía de Etapa B (impuestos de zona → tesorería de reino)
 
-### Fase 8 — Escala
+#### Fase 8 — Escala
 
-- N shards, transferencias entre zonas
+- N regiones, N shards, transferencias entre regiones
 - Extraer Chat, Matchmaking u Orchestration a procesos **solo si una réplica ya no basta** (no antes)
 - Redis obligatorio para presencia y colas
 - Allocator de battle nodes en cluster
 - Interest management más agresivo, possibly binary protocol
 
-**Invariante:** el cliente siempre hace `join_token → connect endpoint → simulate`. Da igual que el endpoint sea lobby, arena o shard `world_west_1`.
+**Invariante:** el cliente siempre hace `join_token → connect endpoint → simulate`. Da igual que el endpoint sea lobby, arena, mazmorra o shard `region_aurora_1`.
 
 ---
 
@@ -1185,9 +1225,9 @@ Aceptado. Cambiar a binario es adapter de protocolo, no cambio de dominio.
 
 Aceptado por producto. Ganchos de Party/PVE existen en el modelo, no en el código de AI.
 
-### ADR-010 — Open world = nuevo SessionKind + AOI, no un lobby infinito
+### ADR-010 — Open world = Etapa C explícita; regiones + AOI, no un lobby infinito
 
-Aceptado. No es un deadline de producto.
+Aceptado. El overworld es `world_shard` por **región** + AOI, no un lobby sin cap. **Congelado** hasta un ADR posterior que abra la Etapa C. Ese ADR solo se escribe tras Etapa A jugada y **meses** de Etapa B (mazmorras + meta). Hasta entonces no hay código ni prototipo de mundo. Diseño de zonas: `docs/GDD.md` §15.
 
 ### ADR-011 — Workers (servicios + Neon/Hyperdrive) y EC2 (WS + Mongo + Godot)
 
@@ -1213,7 +1253,8 @@ Aceptado. Onboarding y mantenimiento se apoyan en `docs/modules/`. Toda modifica
 | Cliente y servidor desalinean data de skills | Hits “fantasma” | Mismos archivos `game/data`, versión en handshake |
 | Lobby lleno | Mala UX | Shards de lobby con el mismo SessionKind |
 | Lógica de daño en el nodo del jugador | Trampas y forks | core/ puro + review |
-| Adelantar mazmorras/MMO | Base inestable | Fases 1–4 cerradas antes de AI |
+| Adelantar mazmorras | Base de rooms inestable | Fase 4 jugable antes de AI / Fase 5 |
+| Colar open world (zonas, regiones, conquista) en A o B | Scope infinito, combate de rooms sin probar | Candado §18.1; rechazar PRs de mundo sin ADR de Etapa C |
 | Puertos abiertos al mundo | Abuse | Join token + firewall + lista de puertos del allocator |
 | Neon cold start | Login lento | Pooling (PgBouncer) / compute Neon acorde |
 | Headless sin heartbeat | Procesos zombi | Watchdog del orquestador |
@@ -1242,7 +1283,7 @@ No se crea `PLAN2.md`. Un segundo plan director se desincroniza y el agente no s
 | Archivo | Qué decide | Qué no decide |
 | --- | --- | --- |
 | `PLAN.md` | Arquitectura, dominios, red, fases, deploy, ADRs | Números de balance, lore, paleta, nombres de skills |
-| `docs/GDD.md` | Fantasía, reinos, builds, stats, items, skills, progresión, controles | Dónde se despliega ni cómo se nombra un puerto |
+| `docs/GDD.md` | Fantasía, reinos, builds, stats, items, skills, progresión, controles, **mazmorras (§16)**, **zonas de overworld (§15, congelado)** | Dónde se despliega ni cómo se nombra un puerto |
 | `docs/brand/BRAND.md` | Color, tipo, voz visual, Theme de Godot | Lógica de combate |
 | `contracts/` | Forma de los payloads | Significado de diseño (“por qué el dash de Aerion es Kawarimi”) |
 | `nexum-terra/data/` | Catálogo ejecutable (JSON/tres) | Debe **reflejar** el GDD, no contradecirlo |
@@ -1309,7 +1350,7 @@ El PLAN describe el sistema entero. **No sustituye** la explicación de cada pie
 
 Coincide con un bounded context o una feature entregable, no con un archivo suelto.
 
-Ejemplos (un markdown cada uno): `identity`, `character`, `inventory`, `social`, `chat`, `matchmaking`, `orchestration`, `match-directory`, `progression`, `simulation` (core Entity/tick/combate), `lobby`, `spectator`, `client-input-ui`, `party` (Fase 5), `world` (Fase 6+).
+Ejemplos (un markdown cada uno): `identity`, `character`, `inventory`, `social`, `chat`, `matchmaking`, `orchestration`, `match-directory`, `progression`, `simulation` (core Entity/tick/combate), `lobby`, `spectator`, `client-input-ui`, `party` (Etapa B), `dungeons` (Etapa B; spawn de mapa en C), `world` (Etapa C; no se rellena como implementación hasta el ADR).
 
 Si nace un feature que no entra en ninguno, se crea **módulo nuevo** (código + `docs/modules/<id>.md`) en el mismo cambio. No se documenta “un poco” dentro de otro módulo ajeno.
 
