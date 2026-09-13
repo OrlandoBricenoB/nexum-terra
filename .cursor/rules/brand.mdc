@@ -1,0 +1,15 @@
+---
+description: Paleta y Theme — leer BRAND.md
+globs: "**/*.{gd,tscn,css,html,svg,tres}"
+alwaysApply: false
+---
+
+# Branding
+
+Antes de colores, Theme, iconos o landing, leer `docs/brand/BRAND.md`.
+
+Usar tokens (`bg.deep`, `accent.primary`, `state.danger`, …). No `Color(0.2, 0.6, 1)` suelto.
+
+Un Theme Godot (`ui/theme/nexum_theme.tres`) cuando exista; `ui/tokens.gd` alineado a la tabla del BRAND.
+
+Chat, nametags y barras según la sección de uso de color de ese archivo.

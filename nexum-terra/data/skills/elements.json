@@ -1,0 +1,30 @@
+{
+  "enabled_in_combat": false,
+  "require_equipped_orb": true,
+  "skills": [
+    { "id": "fire-incineration", "element": "fire", "kind": "passive" },
+    { "id": "fire-combustion", "element": "fire", "kind": "passive" },
+    { "id": "fire-ashes", "element": "fire", "kind": "passive" },
+    { "id": "fire-ball", "element": "fire", "kind": "active", "damage_channel": "vitality" },
+    { "id": "fire-whip", "element": "fire", "kind": "active", "damage_channel": "vitality", "self_applies": ["rooted"] },
+    { "id": "sea-of-fire", "element": "fire", "kind": "active", "damage_channel": "vitality", "self_applies": ["rooted"] },
+    { "id": "wind-evasion", "element": "wind", "kind": "passive" },
+    { "id": "wind-hurricane", "element": "wind", "kind": "passive" },
+    { "id": "wind-speed", "element": "wind", "kind": "passive" },
+    { "id": "wind-cutter", "element": "wind", "kind": "active", "damage_channel": "vitality" },
+    { "id": "wind-slaves", "element": "wind", "kind": "active", "damage_channel": "vitality" },
+    { "id": "whirlwind", "element": "wind", "kind": "active", "damage_channel": "stamina" },
+    { "id": "earth-strength", "element": "earth", "kind": "passive" },
+    { "id": "earth-shaking", "element": "earth", "kind": "passive" },
+    { "id": "earth-roots", "element": "earth", "kind": "passive" },
+    { "id": "earth-spikes", "element": "earth", "kind": "active", "damage_channel": "vitality" },
+    { "id": "earthquake", "element": "earth", "kind": "active", "damage_channel": "vitality" },
+    { "id": "rock-armor", "element": "earth", "kind": "active" },
+    { "id": "water-flow", "element": "water", "kind": "passive" },
+    { "id": "water-impulse", "element": "water", "kind": "passive" },
+    { "id": "water-density", "element": "water", "kind": "passive" },
+    { "id": "water-gun", "element": "water", "kind": "active", "damage_channel": "vitality" },
+    { "id": "water-creatures", "element": "water", "kind": "active", "damage_channel": "vitality" },
+    { "id": "water-barrier", "element": "water", "kind": "active" }
+  ]
+}

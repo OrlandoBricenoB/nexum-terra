@@ -1,0 +1,15 @@
+---
+description: Constitución Nexum Terra — docs, red y dominios
+alwaysApply: true
+---
+
+# Nexum Terra
+
+- Arquitectura: `PLAN.md`. Diseño de builds/items/stats: `docs/GDD.md`. Marca: `docs/brand/BRAND.md`. Cómo está hecho cada módulo: `docs/modules/`.
+- No crear `PLAN2.md`. Ampliar el doc que corresponda; si cambia persistencia o red, actualizar `PLAN.md` en el mismo cambio.
+- Toda feature nueva o cambio de negocio/técnica/gameplay actualiza `docs/modules/<id>.md` en el mismo cambio (plantilla `_TEMPLATE.md`).
+- Godot vive en `nexum-terra/`. Dominio de simulación sin `extends Node`. Combat usa `EntityID`, no `PlayerID`.
+- Chat, auth, invites y colas: HTTP/WebSocket Hono. Posición, inputs, hits: ENet Godot. No mezclar.
+- Contenido nuevo (skill, item, clase) = data + GDD; no `if` en el nodo del jugador.
+- UI: tokens de `docs/brand/BRAND.md`. No inventar hex.
+- Deploy: Godot headless no va a Cloudflare Workers. Workers como mucho REST/CDN.

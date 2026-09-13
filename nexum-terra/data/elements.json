@@ -1,0 +1,58 @@
+{
+  "enabled_in_combat": false,
+  "basics": ["fire", "wind", "earth", "water"],
+  "advantage": [
+    ["wind", "earth"],
+    ["earth", "water"],
+    ["water", "fire"],
+    ["fire", "wind"]
+  ],
+  "crossed_policy": "no_bonus_both_destroy",
+  "slots": [
+    { "id": "orb_1", "accepts": "basic", "unlock": "system" },
+    { "id": "orb_2", "accepts": "basic", "unlock": "training" },
+    { "id": "orb_3", "accepts": "basic_or_compound", "unlock": "training" }
+  ],
+  "must_equip_orb_to_cast": true,
+  "craft": {
+    "fuse_success": 0.6,
+    "decraft_success": 0.5,
+    "fuse_fail_destroys_all_inputs": true,
+    "rune_bonus_each": 0.05,
+    "clan_bonus": { "gadgetrix": 0.25 }
+  },
+  "purity": {
+    "fire": {
+      "visual": "blue_flames",
+      "damage_pct": 0.2,
+      "cooldown_pct": -0.15
+    },
+    "wind": {
+      "cut_chance_pct": 0.5,
+      "cooldown_pct": -0.15,
+      "mana_cost_pct": -0.2
+    },
+    "earth": {
+      "cooldown_pct": -0.15,
+      "mana_cost_pct": -0.2
+    },
+    "water": {
+      "cooldown_pct": -0.15,
+      "mana_cost_pct": -0.2
+    }
+  },
+  "ground_residue": {
+    "fire": "burn",
+    "water": "slow",
+    "earth": "slow",
+    "wind": "push"
+  },
+  "reactions": [
+    { "a": "fire", "b": "wind", "result": "flames_expand_wind_cleared" },
+    { "a": "fire", "b": "earth", "result": "both_remain" },
+    { "a": "fire", "b": "water", "result": "steam_heat_damage" },
+    { "a": "earth", "b": "water", "result": "mud_slow_100" },
+    { "a": "wind", "b": "earth", "result": "both_remain" },
+    { "a": "wind", "b": "water", "result": "freeze_wind_cleared" }
+  ]
+}

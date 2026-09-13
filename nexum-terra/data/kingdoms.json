@@ -1,0 +1,50 @@
+{
+  "skills_from_kingdom": false,
+  "kingdoms": [
+    {
+      "id": "aurora",
+      "name": "Aurora",
+      "playable": false,
+      "gm_only": true,
+      "era": "past",
+      "hostility": "neutral",
+      "chat_gentile": null
+    },
+    {
+      "id": "fontaine",
+      "name": "Fontaine",
+      "playable": true,
+      "gm_only": false,
+      "era": "future",
+      "hostility": "active",
+      "chat_gentile": "Fontainer"
+    },
+    {
+      "id": "terrara",
+      "name": "Terrara",
+      "playable": true,
+      "gm_only": false,
+      "era": "past",
+      "hostility": "active",
+      "chat_gentile": "Terrano"
+    },
+    {
+      "id": "spectra",
+      "name": "Spectra",
+      "playable": true,
+      "gm_only": false,
+      "era": "unrecorded",
+      "hostility": "active",
+      "chat_gentile": "Spectro"
+    },
+    {
+      "id": "aerion",
+      "name": "Aerion",
+      "playable": true,
+      "gm_only": false,
+      "era": "future",
+      "hostility": "active",
+      "chat_gentile": "Aerion"
+    }
+  ]
+}

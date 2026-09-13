@@ -1,0 +1,14 @@
+---
+description: Docs vivos por módulo — obligatorio con cada cambio
+alwaysApply: true
+---
+
+# Documentación por módulo
+
+Cada módulo/feature tiene `docs/modules/<id>.md` (plantilla `_TEMPLATE.md`, índice `docs/modules/README.md`).
+
+En el mismo cambio que el código, actualizar negocio, técnica y/o gameplay. Sin eso la feature no está hecha.
+
+Módulo nuevo: archivo + fila en el índice. No volcar el PLAN entero en el module doc.
+
+PLAN = sistema. GDD = diseño de builds/items. Module doc = cómo está implementado hoy.

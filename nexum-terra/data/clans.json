@@ -1,0 +1,117 @@
+{
+  "skills_from_clan": false,
+  "clans": [
+    {
+      "id": "omnivisus",
+      "name": "Omnivisus",
+      "kingdom_id": "fontaine",
+      "playable": true,
+      "skills": []
+    },
+    {
+      "id": "sagitta",
+      "name": "Sagitta",
+      "kingdom_id": "fontaine",
+      "playable": true,
+      "skills": []
+    },
+    {
+      "id": "gadgetrix",
+      "name": "Gadgetrix",
+      "kingdom_id": "fontaine",
+      "playable": true,
+      "skills": []
+    },
+    {
+      "id": "ciberlance",
+      "name": "Ciberlance",
+      "kingdom_id": "fontaine",
+      "playable": true,
+      "skills": []
+    },
+    {
+      "id": "herbora",
+      "name": "Herbora",
+      "kingdom_id": "spectra",
+      "playable": true,
+      "skills": []
+    },
+    {
+      "id": "entomante",
+      "name": "Entomante",
+      "kingdom_id": "spectra",
+      "playable": true,
+      "skills": []
+    },
+    {
+      "id": "pyrofauces",
+      "name": "Pyrofauces",
+      "kingdom_id": "spectra",
+      "playable": true,
+      "skills": []
+    },
+    {
+      "id": "nachtsoldaten",
+      "name": "Nachtsoldaten",
+      "kingdom_id": "spectra",
+      "playable": true,
+      "skills": []
+    },
+    {
+      "id": "stellamante",
+      "name": "Stellamante",
+      "kingdom_id": "terrara",
+      "playable": true,
+      "skills": []
+    },
+    {
+      "id": "pulmonarius",
+      "name": "Pulmonarius",
+      "kingdom_id": "terrara",
+      "playable": true,
+      "skills": []
+    },
+    {
+      "id": "vitamancers",
+      "name": "Vitamancers",
+      "kingdom_id": "terrara",
+      "playable": true,
+      "skills": []
+    },
+    {
+      "id": "sangrafilos",
+      "name": "Sangrafilos",
+      "kingdom_id": "terrara",
+      "playable": true,
+      "skills": []
+    },
+    {
+      "id": "umbromante",
+      "name": "Umbromante",
+      "kingdom_id": "aerion",
+      "playable": true,
+      "skills": []
+    },
+    {
+      "id": "geisteswaffen",
+      "name": "Geisteswaffen",
+      "kingdom_id": "aerion",
+      "playable": true,
+      "skills": []
+    },
+    {
+      "id": "crystallomante",
+      "name": "Crystallomante",
+      "kingdom_id": "aerion",
+      "playable": true,
+      "skills": []
+    },
+    {
+      "id": "sonomantes",
+      "name": "Sonomantes",
+      "kingdom_id": "aerion",
+      "playable": true,
+      "skills": []
+    }
+  ]
+}
