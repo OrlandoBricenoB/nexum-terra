@@ -1,0 +1,13 @@
+{
+  "rule": "and",
+  "beyond_sss_planned": ["ssss", "sssss"],
+  "ranks": [
+    { "id": "d", "label": "D", "honor_min": 0, "kills_min": 0 },
+    { "id": "c", "label": "C", "honor_min": 30, "kills_min": 10 },
+    { "id": "b", "label": "B", "honor_min": 100, "kills_min": 30 },
+    { "id": "a", "label": "A", "honor_min": 150, "kills_min": 50 },
+    { "id": "s", "label": "S", "honor_min": 300, "kills_min": 100 },
+    { "id": "ss", "label": "SS", "honor_min": 800, "kills_min": 300 },
+    { "id": "sss", "label": "SSS", "honor_min": 1500, "kills_min": 500 }
+  ]
+}

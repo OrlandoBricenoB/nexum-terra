@@ -1,0 +1,15 @@
+{
+  "guard": {
+    "shield_damage_reduction_pct": { "min": 60, "max": 80 },
+    "arms_damage_reduction_pct": 40,
+    "cannot_raise_until_bar_recharged_after_break": true,
+    "break_applies_stun": true,
+    "stun_ms": null,
+    "break_uses_weapon_clash_shockwave": true
+  },
+  "weapon_clash": {
+    "bounce": true,
+    "shockwave": true,
+    "separation_tiles": null
+  }
+}

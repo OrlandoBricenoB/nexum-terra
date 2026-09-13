@@ -1,0 +1,41 @@
+{
+  "planned_special": ["sage", "hero"],
+  "ranks": [
+    {
+      "id": "novice",
+      "label_es": "Novicio",
+      "order": 1,
+      "promotion": "starting"
+    },
+    {
+      "id": "soldier",
+      "label_es": "Soldado",
+      "order": 2,
+      "promotion": "world_survival_challenge",
+      "entry_requirements": null
+    },
+    {
+      "id": "commander",
+      "label_es": "Comandante",
+      "order": 3,
+      "promotion": "automatic",
+      "requires": { "honor_min": 150, "classification_rank_id": "b" },
+      "may_create_order": true,
+      "order_territories_era": "C"
+    },
+    {
+      "id": "elite",
+      "label_es": "Élite",
+      "order": 4,
+      "promotion": "aurora_tournament_top3",
+      "tournament": {
+        "min_participants": 8,
+        "participants_must_be_even": true,
+        "bracket": [4, 2, 1],
+        "same_arena_serial": true,
+        "elites_per_event": 3,
+        "rewards": null
+      }
+    }
+  ]
+}

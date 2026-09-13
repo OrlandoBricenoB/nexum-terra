@@ -11,6 +11,7 @@ Norma completa: `PLAN.md` §28. Plantilla: [`_TEMPLATE.md`](./_TEMPLATE.md).
 | identity | planned | [identity.md](./identity.md) | backend |
 | character | planned | [character.md](./character.md) | backend |
 | inventory | planned | [inventory.md](./inventory.md) | backend + data |
+| commerce | planned | [commerce.md](./commerce.md) | backend (Workers) |
 | social | planned | [social.md](./social.md) | backend |
 | chat | planned | [chat.md](./chat.md) | backend WS |
 | matchmaking | planned | [matchmaking.md](./matchmaking.md) | backend |

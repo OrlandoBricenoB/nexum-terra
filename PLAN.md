@@ -39,6 +39,7 @@
 26. [Despliegue: Cloudflare, AWS y el cluster de juego](#26-despliegue-cloudflare-aws-y-el-cluster-de-juego)
 27. [Branding y UI](#27-branding-y-ui)
 28. [Documentación por módulo y feature](#28-documentación-por-módulo-y-feature)
+29. [Modelo de negocio y comercio](#29-modelo-de-negocio-y-comercio)
 
 ---
 
@@ -178,7 +179,7 @@ Cada contexto tiene un idioma propio. No se mezclan términos (`Room` de chat �
 ### 4.2 Profile & Character
 
 - **Responsabilidad:** personaje visible en lobby/combate, caps de vitals (maná, stamina, vitalidad), cosméticos de presentación.
-- **Lenguaje:** Character, Appearance, BaseStats, Loadout.
+- **Lenguaje:** Character, Appearance, BaseStats, Loadout, Honor, KillCount, KingdomRank.
 - **Al inicio:** un personaje por cuenta. El modelo admite N personajes sin reescribir auth.
 - **No hace:** simular el combate en tiempo real (solo persiste el resultado y el loadout).
 
@@ -188,8 +189,9 @@ Cada contexto tiene un idioma propio. No se mezclan términos (`Room` de chat �
 - **Lenguaje:** ItemDef, ItemInstance, EquipmentSlot, Currency, MarketListing, Snapshot.
 - **Regla:** el servidor de batalla recibe un **snapshot inmutable** del loadout al iniciar la sesión (mods **ya resueltos**: def + calidad/nivel/rolls). No escribe inventario a mitad de un 1v1. Al terminar, aplica un **delta** (recompensas, durabilidad futura, Hesedias) vía evento `SessionEnded`.
 - **Crafting y mercado** son casos de uso de este contexto (Hono/REST en Workers). No van por ENet. Al **listar** un ítem, sale del inventario (escrow en `market_listings`); el vendedor no lo equipa ni lo duplica. Compra válida con el vendedor **offline**.
+- **Moneda de mundo:** solo **Hesedias** (`currency_id` `hesedias`) en `character_wallets`. El mercado de jugadores **no** cotiza Nexum Coin ni dinero real.
 - **Por qué:** evita race conditions entre tick de combate y REST de inventario. En mazmorras (Etapa B) y más tarde en shards (Etapa C) el drop es el mismo puerto: evento → Inventory.
-- **Diseño de rolls, calidad y orbes de uso:** `docs/GDD.md` §8.10–8.18. No se implementa en Fases 1–4 (Etapa A). Mercado y crafting completos = Etapa B, no open world.
+- **Diseño de rolls, calidad y orbes de uso:** `docs/GDD.md` §8.10–8.18. No se implementa en Fases 1–4 (Etapa A). Mercado y crafting completos = Etapa B, no open world. Dinero real y NC: contexto **Commerce** (§4.14, §29), no este.
 
 ### 4.4 Social
 
@@ -244,9 +246,11 @@ Cada contexto tiene un idioma propio. No se mezclan términos (`Room` de chat �
 
 ### 4.11 Progression & Battle Log (Postgres)
 
-- **Responsabilidad:** historial de partidas, MMR futuro, XP, unlocks.
-- **Lenguaje:** MatchRecord, ParticipantResult, Rating.
-- **El lobby de práctica no escribe aquí.** Daño a dummies es efímero.
+- **Responsabilidad:** historial de partidas, MMR futuro, XP, unlocks, **clasificación** (Honor + asesinatos → rango D–SSS, `docs/GDD.md` §11.6) y **rango de reino** (`docs/GDD.md` §11.7).
+- **Lenguaje:** MatchRecord, ParticipantResult, Rating, Honor, KillCount, ClassificationRank, KingdomRank.
+- **El lobby de práctica no escribe aquí.** Daño a dummies es efímero. Honor y kills no suben en `practice_lobby`.
+- **Clasificación:** rango derivado de umbrales AND en `nexum-terra/data/classification-ranks.json`. No se elige a mano.
+- **Rango de reino:** persistido (`kingdom_rank_id`); promociones de evento (Soldado, Élite) no se infieren solo de Honor. Comandante sí se infiere de Honor 150 + clasificación B cuando esos contadores existan. Órdenes/territorios no se implementan hasta Etapa C.
 
 ### 4.12 World (Etapa C, congelado)
 
@@ -268,9 +272,22 @@ Matchmaking → Orchestration → Simulation process
 Social/Chat ← eventos de Matchmaking (invites, ready)
 Simulation → Battle Log / Inventory  (solo al terminar o en checkpoints PvE/MMO)
 World (futuro) → mismos puertos que Simulation
+Identity ← Commerce
+Commerce → Inventory (cumplir SKU: ítem o Hesedias)
+Commerce → Progression (p. ej. puntos de habilidad comprados)
 ```
 
-Prohibido: Simulation importando Hono; Chat importando hitboxes; Matchmaking escribiendo stats de combate.
+Prohibido: Simulation importando Hono; Chat importando hitboxes; Matchmaking escribiendo stats de combate; **Godot o ENet cobrando o acreditando NC**.
+
+### 4.14 Commerce & Entitlements
+
+- **Responsabilidad:** dinero real, **Nexum Coin (NC)**, catálogo de SKU, pedidos, webhooks del procesador de pagos, entitlements (beta/Patreon/crowdfunding, suscripción) y cumplimiento hacia Inventory/Progression. Infoproductos (guías, etc.) si se venden con el mismo checkout.
+- **Lenguaje:** NexumCoin, Sku, Order, Payment, Entitlement, Fulfillment, Subscription.
+- **No hace:** simular combate; listar ítems en el mercado de jugadores; inventar balances de Hesedias.
+- **Transporte:** solo **Hono REST en Workers** + webhook del PSP. Nunca ENet. El cliente no “se da” NC ni ítems de tienda.
+- **Por qué existe aparte de Inventory:** PCI, idempotencia de pagos y entitlements de cuenta no son posesión de ítems. Mezclarlos en `market_listings` rompe fail-closed y auditorías.
+- **Gancho desde Etapa A:** ids de moneda, tablas y este contexto están **declarados**. No hay tienda jugable ni PSP en Fases 1–4. El primer migrate de wallets **ya** distingue `hesedias` y `nexum_coin`; no se añade NC con un parche de última hora.
+- Diseño de producto (tasas, canales, pay-to-win): `docs/GDD.md` §17 y este PLAN §29.
 
 ---
 
@@ -291,7 +308,7 @@ Prohibido: Simulation importando Hono; Chat importando hitboxes; Matchmaking esc
    │     └─ ENet/UDP → Godot headless en el mismo EC2
    │
    ├─ Cloudflare Workers (servicios)
-   │     ├─ REST: auth, perfiles, inventario, amigos, historial de batallas
+   │     ├─ REST: auth, perfiles, inventario, amigos, historial, comercio (NC / webhooks)
    │     └─ PostgreSQL (Neon) vía Hyperdrive
    │
    └─ AWS EC2
@@ -333,7 +350,7 @@ Cuando (y solo cuando) exista decisión de Etapa C, el cliente hará el mismo ha
 | Capa | Tecnología | Dónde | Rol |
 | --- | --- | --- | --- |
 | Cliente | Godot **4.7.2** | dispositivo | Render 2D top-down, input, predicción, UI |
-| Servicios REST | Node.js + TypeScript + **Hono** | **Cloudflare Workers** | Auth, perfiles, inventario, amigos, historial |
+| Servicios REST | Node.js + TypeScript + **Hono** | **Cloudflare Workers** | Auth, perfiles, inventario, amigos, historial, **comercio/pagos** |
 | Postgres | **Neon + Hyperdrive** | desde Workers | Users, characters, friends, inventory, match logs |
 | Tiempo real | Node.js + TypeScript + **Hono WS** | **AWS EC2** | Chat, whispers, invites, `match:ready`, colas |
 | Documentos | **MongoDB** | desde el proceso WS en EC2 | Chat, mensajes offline, lobby events |
@@ -482,6 +499,9 @@ Migraciones en `infra/postgres/migrations/`. Nombres en `snake_case`.
 | name | text unique | |
 | kingdom_id | text | catálogo `nexum-terra/data/kingdoms.json`. Jugable: `fontaine` `terrara` `spectra` `aerion`. `aurora` solo GM |
 | clan_id | text | catálogo `nexum-terra/data/clans.json`; debe pertenecer a `kingdom_id`. Skills del clan vacías en primeras etapas; el tick no las aplica |
+| honor | int | default 0. Misiones (cuando existan). GDD §11.6 |
+| kills | int | default 0. Asesinatos persistidos (rooms PvP en A; no lobby) |
+| kingdom_rank_id | text | default `novice`. Catálogo `nexum-terra/data/kingdom-ranks.json`. GDD §11.7 |
 | level | int | default 1 |
 | appearance | jsonb | |
 | last_lobby_x, last_lobby_y | real | opcional persistencia de posición de hub |
@@ -527,14 +547,53 @@ Catálogo versionado. En Fase 1 puede vivir en `game/data` + tabla espejo cuando
 | requested_by | uuid | |
 | unique (user_a, user_b) | | |
 
-#### `character_wallets` (economía; no Fase 1–4)
+#### `character_wallets` (economía de mundo; no Fase 1–4)
 
 | Columna | Tipo | Notas |
 | --- | --- | --- |
 | character_id | uuid | FK |
-| currency_id | text | canónico: `hesedias` |
+| currency_id | text | canónico: **`hesedias` solamente** |
 | amount | numeric | nunca negativo; fail closed |
 | unique (character_id, currency_id) | | |
+
+NC **no** vive aquí. Premium es de **cuenta**, no de personaje (sobrevive a borrar/cambiar character).
+
+#### `user_wallets` (Nexum Coin; gancho desde A, uso en tienda/producción)
+
+| Columna | Tipo | Notas |
+| --- | --- | --- |
+| user_id | uuid | FK a `users` |
+| currency_id | text | canónico: **`nexum_coin`** |
+| amount | numeric | nunca negativo; fail closed |
+| unique (user_id, currency_id) | | |
+
+#### `commerce_orders` (pagos; no PSP en Fases 1–4)
+
+| Columna | Tipo | Notas |
+| --- | --- | --- |
+| id | uuid PK | |
+| user_id | uuid | |
+| sku_id | text | catálogo versionado |
+| status | text | `pending` / `paid` / `fulfilled` / `failed` / `refunded` |
+| provider | text | psp (`stripe`, etc.) o `manual` / `patron` / `crowdfunding` |
+| provider_ref | text unique null | id del PSP; **idempotencia** del webhook |
+| amount_fiat | numeric | |
+| fiat_code | text | p. ej. `USD` |
+| created_at | timestamptz | |
+
+El webhook **no** acredita dos veces el mismo `provider_ref`. Fail closed si la firma no valida.
+
+#### `entitlements` (beta, suscripción, grants ops)
+
+| Columna | Tipo | Notas |
+| --- | --- | --- |
+| id | uuid PK | |
+| user_id | uuid | |
+| entitlement_id | text | de catálogo / ops (p. ej. `beta.patron.unique`) |
+| source | text | `patron` / `crowdfunding` / `subscription` / `manual` |
+| payload | jsonb | personalización; no lógica en el tick |
+| expires_at | timestamptz null | suscripciones; null = permanente |
+| unique (user_id, entitlement_id) donde aplique | | |
 
 #### `market_listings` (mercado offline; no Fase 1–4)
 
@@ -543,7 +602,7 @@ Catálogo versionado. En Fase 1 puede vivir en `game/data` + tabla espejo cuando
 | id | uuid PK | |
 | seller_character_id | uuid | |
 | item_instance_id | uuid unique | el ítem **no** está en inventario del vendedor mientras la listing esté abierta |
-| currency_id | text | `hesedias` |
+| currency_id | text | **solo** `hesedias` (nunca `nexum_coin`) |
 | price | numeric | |
 | created_at | timestamptz | |
 
@@ -581,6 +640,9 @@ Equipar exige (cuando existan) flags/skills de **portar nivel** en el personaje 
 - `match_participants(character_id, match_id)`
 - `market_listings(created_at desc)` cuando exista la tabla
 - `character_wallets(character_id)` cuando exista la tabla
+- `user_wallets(user_id)` cuando exista la tabla
+- `commerce_orders(user_id)`, `commerce_orders(provider_ref)` unique cuando exista
+- `entitlements(user_id)` cuando exista la tabla
 
 ### 9.2 MongoDB — chat y efímeros
 
@@ -635,7 +697,7 @@ Eventos temporales de debug/auditoría ligera (join, leave, dummy_kill). TTL cor
 
 Prefijo `/api`. Auth Bearer salvo register/login.
 
-**Dónde se sirve:** 10.1–10.3 y persistencia de `match_records` → **Workers**. 10.4–10.6 (colas, live, join tokens, heartbeat Godot) → **HTTP del proceso realtime en EC2** (mismo proceso que el WS). El cliente tiene `SERVICES_URL` (Workers) y `REALTIME_URL` (EC2). No son microservicios: mismo repo, dos `app`.
+**Dónde se sirve:** 10.1–10.3, **10.8 (comercio)** y persistencia de `match_records` → **Workers**. 10.4–10.6 (colas, live, join tokens, heartbeat Godot) → **HTTP del proceso realtime en EC2** (mismo proceso que el WS). El cliente tiene `SERVICES_URL` (Workers) y `REALTIME_URL` (EC2). No son microservicios: mismo repo, dos `app`.
 
 ### 10.1 Auth (`identity`)
 
@@ -714,7 +776,22 @@ En **Workers**, el proceso realtime reporta el resultado para Neon:
 
 ### 10.7 Errores estándar
 
-`400` validación, `401` token, `403` prohibido, `404`, `409` conflicto (ya en cola, ya amigo), `429` rate limit, `503` sin capacidad de battle nodes.
+`400` validación, `401` token, `403` prohibido, `404`, `409` conflicto (ya en cola, ya amigo, pedido duplicado), `429` rate limit, `503` sin capacidad de battle nodes.
+
+### 10.8 Commerce (Workers; tienda no Fase 1–4)
+
+Auth Bearer salvo el webhook del PSP (firma del proveedor, no JWT del jugador).
+
+| Método | Ruta | Auth | Descripción |
+| --- | --- | --- | --- |
+| GET | `/api/store/catalog` | sí | SKUs visibles (NC packs, ítems, suscripción). Vacío hasta producción/beta |
+| POST | `/api/store/checkout` | sí | Crea `commerce_orders` pending y sesión en el PSP. **No** acredita NC aquí |
+| GET | `/api/store/wallets` | sí | Saldo NC (cuenta) + Hesedias del character activo |
+| POST | `/api/store/redeem` | sí | Gasta NC en un SKU no-fiat (ítem, Hesedias, puntos). Atómico |
+| POST | `/api/webhooks/payments` | firma PSP | Idempotente: `paid` → cumplir pedido. Fail closed si firma inválida |
+| POST | `/internal/commerce/grant` | service key | Grant ops / Patreon / crowdfunding → entitlement o NC. Nunca el cliente |
+
+El cliente Godot **consulta** catálogo y saldos por REST. El tick **no** lee pedidos.
 
 ---
 
@@ -818,11 +895,13 @@ Entity:
   team / faction
   transform (x, y, facing)
   movement (speed, controller: input | ai | none)
-  combat (mana, stamina, vitality, pct_mods por tag, modifiers)
+  combat (mana, stamina, vitality, pct_mods por tag, modifiers, guard)
   skills (loadout)
-  status_effects[] (CC, DoT, buffs)
+  status_effects[] (CC, DoT, buffs; p. ej. stun de rotura de guardia)
   flags (invulnerable, spectating, practice)
 ```
+
+`guard`: barra, si está alta, si está rota (no se puede levantar hasta recargar). Números: `docs/GDD.md` §9.6 y `nexum-terra/data/melee.json`. Choque arma-vs-arma: empuje + onda de choque en resolución de hits, no skill de hotbar.
 
 `PlayerID` / `user_id` es un **componente opcional** `IdentityLink`, no la clave del loop.
 
@@ -833,8 +912,8 @@ for each tick:
   1. recoger intents (inputs de players, decisiones de AI)
   2. aplicar movimiento (colisión mapa)
   3. resolver skills (cast, proyectiles)
-  4. hit detection (shapes)
-  5. aplicar daño (canales maná/stamina/vitalidad y overflow; `docs/GDD.md` §6) y CC
+  4. hit detection (shapes); choque melee vs melee si aplica (`docs/GDD.md` §9.6)
+  5. aplicar daño (canales maná/stamina/vitalidad y overflow; `docs/GDD.md` §6), guardia y CC
   6. KO (vitalidad 0) / respawn según ruleset
   7. emitir eventos y snapshot
 ```
@@ -977,6 +1056,7 @@ Patrones de extensión previstos:
 | Guilds | Nuevo contexto Social/Guilds, canal chat, Postgres |
 | Crafting (orbes, atributos, nivel de ítem) | Inventory domain (REST) |
 | Mercado de jugadores / Hesedias | Inventory & Economy (`market_listings`, `character_wallets`) — **Etapa B**, no C |
+| Nexum Coin / IAP / Patreon / suscripción | Commerce (`user_wallets`, `commerce_orders`, `entitlements`) — ganchos en A; PSP en producción |
 | World boss / zonas / conquista / regiones | **Etapa C.** No se engancha en Fases 1–5 |
 | Mobile stick | Solo `adapters/input` |
 | Redis matchmaking | Nuevo adapter de `MatchmakingStore` |
@@ -985,7 +1065,7 @@ Patrones de extensión previstos:
 
 ## 17. Fases de construcción
 
-Cada fase cierra un corte jugable. No se adelanta PvE a Fases 1–4. **No se adelanta open world a ninguna fase de las Etapas A o B.** Sí se dejan ganchos de núcleo (`EntityID`, `SessionKind` listado, `Ruleset`, `party_id` opcional), no sistemas de mundo.
+Cada fase cierra un corte jugable. No se adelanta PvE a Fases 1–4. **No se adelanta open world a ninguna fase de las Etapas A o B.** Sí se dejan ganchos de núcleo (`EntityID`, `SessionKind` listado, `Ruleset`, `party_id` opcional, **monedas duales y contexto Commerce**), no sistemas de mundo ni un PSP en el lobby.
 
 ### Fase 0 — Andamiaje (corta, antes de Fase 1)
 
@@ -1058,9 +1138,10 @@ Esta fase es un **paquete de producto**, no un único sprint. Arranca cuando el 
 - Mapas de **mazmorra** (instancias), objetivos, drops vía evento a Inventory. Entrada **desde el lobby**, no desde un overworld.
 - Tipos verde / azul / roja y recompensas: GDD §16. **Fuera de Fase 5:** spawn periódico en zonas, carrera al portal, entrada que desaparece del mapa.
 - Chat de party.
-- Metajuego que el GDD ya describe y que **no** es mundo: build (calidad/nivel/crafting/orbes cuando toque), inventario persistente, mercado, skills de clan, profesiones, puntos/rebirth según el recorte que se elija al abrir B.
+- Metajuego que el GDD ya describe y que **no** es mundo: build (calidad/nivel/crafting/orbes cuando toque), inventario persistente, mercado de **Hesedias**, skills de clan, profesiones, puntos/rebirth según el recorte que se elija al abrir B.
+- Comercio: cumplir SKUs y wallets duales cuando el recorte de B lo pida; **PSP de tarjetas** cuando haya producción (puede ser posterior al primer meta jugable). Beta/Patreon puede grant-ear antes, vía ops.
 
-**Fuera de Fase 5:** cualquier mapa de región, zona de peligro, loot de cadáver de overworld, estatua de conquista, chat por zona de mundo, persistencia `world_x/world_y`, AOI.
+**Fuera de Fase 5:** cualquier mapa de región, zona de peligro, loot de cadáver de overworld, estatua de conquista, chat por zona de mundo, persistencia `world_x/world_y`, AOI. **Fuera de Fases 1–4:** checkout de tarjeta, catálogo IAP cobrable, tienda en el HUD de combate.
 
 **Hecho cuando (mínimo de mazmorra):** un party de 2 entra a una mazmorra, mata un dummy-AI con el mismo sistema de daño que el PvP, y recibe un item al terminar. El “hecho” de mercado/clanes se define al partir 5.x; no se usa como excusa para abrir Etapa C.
 
@@ -1086,7 +1167,7 @@ El open world **no** es un lobby más grande con 10.000 CharacterBody2D replicad
 | Qué sí se puede ahora | Escribir/actualizar GDD §15–§16 y este §18. Reservar nombres (`world_shard`) |
 | Qué no | Mapas de región, TileMaps de overworld, `OpenWorld` ruleset, AOI, `world_x/world_y`, zonas en data, cadáveres de mundo, estatuas, chat `zone`, UI de conquista, “prototipo de campo detrás del lobby” |
 
-Economía persistente (Hesedias, crafting, mercado) es **Etapa B**, no C. En C se reutiliza; no se espera al overworld para tener inventario.
+Economía persistente (Hesedias, crafting, mercado) es **Etapa B**, no C. Nexum Coin y el procesador de pagos son **Commerce** (§4.14, §29): modelo desde A, cobro automático en producción. En C se reutiliza; no se espera al overworld para tener inventario ni tienda.
 
 ### 18.2 Regiones (optimización y gameplay)
 
@@ -1136,10 +1217,12 @@ El overworld **no** es un único mapa continuo cargado entero.
 - Internal API aislada (red privada / key).
 - Rate limit REST y WS.
 - Validación de input en dominio, no solo en el router.
-- El cliente no es de confianza: ni posición, ni daño, ni inventario.
-- Secretos en env, nunca en `contracts/` ni en el repo Godot exportado al jugador (el `JOIN_SECRET` vive en el servidor dedicado, no en el cliente; el cliente solo lleva su join token).
+- El cliente no es de confianza: ni posición, ni daño, ni inventario, **ni “ya pagué”**.
+- Secretos en env, nunca en `contracts/` ni en el repo Godot exportado al jugador (el `JOIN_SECRET` vive en el servidor dedicado, no en el cliente; el cliente solo lleva su join token). Secretos del **PSP** igual: solo Workers.
+- Webhooks de pago: verificar firma; idempotencia por `provider_ref`; no cumplir pedidos `pending` desde el cliente.
 - Sanitizar chat (longitud, control chars). Moderación básica (mute) como puerto futuro.
 - Spectator no recibe join tokens de player.
+- **No cash-out:** Hesedias y NC no se convierten a dinero real. El mercado de jugadores no lista NC.
 
 ---
 
@@ -1176,7 +1259,7 @@ Entornos: `local` | `dev` | `prod`. Workers → Neon/Hyperdrive. EC2 → Mongo, 
 
 - Features por dominio: `feat(identity): ...`, `feat(simulation): ...`.
 - `PLAN.md` se actualiza en el mismo PR si cambia un contrato o un SessionKind.
-- `docs/modules/<contexto>.md` se actualiza en el mismo PR que el código del módulo (negocio, técnica o gameplay). GDD si cambia balance/clases/items.
+- `docs/modules/*.md` se actualiza en el mismo PR que el código del módulo (negocio, técnica o gameplay si aplica). GDD si cambia balance/clases/items **o el diseño de monedas/tienda**.
 - No commits de `.env`.
 
 ### Idioma
@@ -1241,6 +1324,10 @@ Aceptado. Builds, items y stats van en `docs/GDD.md`. Marca en `docs/brand/BRAND
 
 Aceptado. Onboarding y mantenimiento se apoyan en `docs/modules/`. Toda modificación de negocio, técnica o gameplay actualiza ese documento en el mismo cambio que el código.
 
+### ADR-014 — Comercio en Workers; dos monedas; sin cash-out
+
+Aceptado. Dinero real, Nexum Coin y entitlements son el contexto **Commerce** (Hono/Workers + Neon). Hesedias y el mercado de jugadores siguen en Inventory. El procesador concreto (Stripe u otro) es un **adaptador**; el dominio no lo importa. Godot no cobra. No hay conversión a fiat. El modelo dual se declara **antes** de la primera tabla de wallets.
+
 ---
 
 
@@ -1257,7 +1344,8 @@ Aceptado. Onboarding y mantenimiento se apoyan en `docs/modules/`. Toda modifica
 | Colar open world (zonas, regiones, conquista) en A o B | Scope infinito, combate de rooms sin probar | Candado §18.1; rechazar PRs de mundo sin ADR de Etapa C |
 | Puertos abiertos al mundo | Abuse | Join token + firewall + lista de puertos del allocator |
 | Neon cold start | Login lento | Pooling (PgBouncer) / compute Neon acorde |
-| Headless sin heartbeat | Procesos zombi | Watchdog del orquestador |
+| Fraude / doble crédito de NC | Economía rota, cargos chargeback | Webhook firmado, `provider_ref` unique, fail closed, grants solo ops |
+| Meter NC en el mercado de jugadores | RMT y lavado | `market_listings.currency_id` solo `hesedias` |
 
 ---
 
@@ -1282,8 +1370,8 @@ No se crea `PLAN2.md`. Un segundo plan director se desincroniza y el agente no s
 
 | Archivo | Qué decide | Qué no decide |
 | --- | --- | --- |
-| `PLAN.md` | Arquitectura, dominios, red, fases, deploy, ADRs | Números de balance, lore, paleta, nombres de skills |
-| `docs/GDD.md` | Fantasía, reinos, builds, stats, items, skills, progresión, controles, **mazmorras (§16)**, **zonas de overworld (§15, congelado)** | Dónde se despliega ni cómo se nombra un puerto |
+| `PLAN.md` | Arquitectura, dominios, red, fases, deploy, ADRs, **modelo de cobro (Commerce)** | Números de balance de combate, lore, paleta, nombres de skills |
+| `docs/GDD.md` | Fantasía, reinos, builds, stats, items, skills, progresión, controles, **mazmorras (§16)**, **zonas de overworld (§15, congelado)**, **monedas y tienda de diseño (§17)** | Dónde se despliega ni cómo se nombra un puerto |
 | `docs/brand/BRAND.md` | Color, tipo, voz visual, Theme de Godot | Lógica de combate |
 | `contracts/` | Forma de los payloads | Significado de diseño (“por qué el dash de Aerion es Kawarimi”) |
 | `nexum-terra/data/` | Catálogo ejecutable (JSON/tres) | Debe **reflejar** el GDD, no contradecirlo |
@@ -1350,7 +1438,7 @@ El PLAN describe el sistema entero. **No sustituye** la explicación de cada pie
 
 Coincide con un bounded context o una feature entregable, no con un archivo suelto.
 
-Ejemplos (un markdown cada uno): `identity`, `character`, `inventory`, `social`, `chat`, `matchmaking`, `orchestration`, `match-directory`, `progression`, `simulation` (core Entity/tick/combate), `lobby`, `spectator`, `client-input-ui`, `party` (Etapa B), `dungeons` (Etapa B; spawn de mapa en C), `world` (Etapa C; no se rellena como implementación hasta el ADR).
+Ejemplos (un markdown cada uno): `identity`, `character`, `inventory`, `commerce`, `social`, `chat`, `matchmaking`, `orchestration`, `match-directory`, `progression`, `simulation` (core Entity/tick/combate), `lobby`, `spectator`, `client-input-ui`, `party` (Etapa B), `dungeons` (Etapa B; spawn de mapa en C), `world` (Etapa C; no se rellena como implementación hasta el ADR).
 
 Si nace un feature que no entra en ninguno, se crea **módulo nuevo** (código + `docs/modules/<id>.md`) en el mismo cambio. No se documenta “un poco” dentro de otro módulo ajeno.
 
@@ -1393,6 +1481,58 @@ Si PLAN y el module doc chocan, se corrige el que esté obsoleto en el mismo cam
 
 ---
 
+## 29. Modelo de negocio y comercio
+
+El cobro **no espera al open world**. Si las wallets y los pedidos se inventan al ir a producción, Identity e Inventory se parchean. Por eso el contexto Commerce y las dos monedas están **declarados desde Etapa A**; la tienda cobrable y el PSP no.
+
+Producto (qué se vende, tasas, pay-to-win): `docs/GDD.md` §17. Sistema (tablas, REST, fail-closed): §4.14, §9, §10.8, ADR-014.
+
+### 29.1 Dos monedas (nunca una)
+
+| Moneda | `currency_id` | Cómo entra | Dónde se guarda | Dónde se gasta |
+| --- | --- | --- | --- | --- |
+| **Nexum Coin (NC)** | `nexum_coin` | CASH vía PSP, o grant ops (beta/Patreon) | `user_wallets` (cuenta) | Catálogo de tienda (`redeem` / fulfill de pack) |
+| **Hesedia / Hesedias** | `hesedias` | Juego (drops, mercado, craft). Un SKU de tienda **puede** entregar Hesedias | `character_wallets` (personaje) | Mercado de jugadores, craft, sinks de mundo |
+
+No se mezclan en la misma fila. No hay tipo de cambio libre NC ↔ Hesedias: si NC compra Hesedias, es un **SKU**, no un FX. **Prohibido** convertir a dinero real (cash-out). El mercado de jugadores **solo** `hesedias`.
+
+Tasa de diseño de packs (no es FX en vivo; comisiones del PSP aparte): **1 USD → 15 NC**. Referencia: **100 USD → 1 500 NC**. Los SKU concretos (10 USD, etc.) se listan en catálogo al abrir tienda; no se hardcodean en Godot.
+
+### 29.2 Before production (beta / primer impulso)
+
+En betas se pueden ofrecer **beneficios únicos y personalizados** a testers vía **Patreon u otra plataforma de crowdfunding**. Eso es el primer impulso económico.
+
+Implementación: `entitlements` + `commerce_orders.provider` `patron` | `crowdfunding` | `manual`. Un operador (o un job que lea la plataforma) llama `/internal/commerce/grant`. **No** hace falta checkout de tarjeta para esto. El contenido del beneficio se diseña por temporada de beta (GDD §17); no se mete un `if is_patron` en el tick.
+
+### 29.3 In production (cobro automático)
+
+Idea de negocio: pago con **cualquier tarjeta crédito/débito** vía procesador. Se recibe el pago y **automáticamente** se entrega lo comprado (pack de NC, SKU, suscripción).
+
+Flujo canónico:
+
+1. Cliente autenticado `POST /api/store/checkout` → pedido `pending` + sesión en el PSP.
+2. El jugador paga en el PSP (hosted checkout / elemento de tarjeta). Godot no ve PAN.
+3. Webhook `POST /api/webhooks/payments` con firma válida → `paid` → cumplimiento (acreditar NC o entregar SKU).
+4. Reintentos del PSP: el mismo `provider_ref` no vuelve a cumplir.
+
+Proveedor (Stripe u otro): **adaptador**. El dominio conoce Order + Payment + Fulfillment. Elegir PSP es un ADR de adaptador cuando se abra producción, no un `if` en Inventory.
+
+### 29.4 Canales de ingreso
+
+| Canal | Rol | Notas |
+| --- | --- | --- |
+| **Microtransacciones** | **Principal** | Elementos virtuales o mejoras de experiencia: cosméticos, armas, monedas, ventajas competitivas. Cada SKU lleva `tag`: `cosmetic` \| `currency` \| `power`. Ver GDD §17 (PvP puede equalizar `power`) |
+| **Suscripción** | Alternativo | Membresía mensual/anual; `entitlements` con `expires_at`. Beneficios de catálogo, no código suelto |
+| **Infoproductos** | Alternativo | Guías, tutoriales, trucos, estrategias. Fuera del tick; misma cuenta/checkout si se vende junto al juego, o store web. No van por ENet |
+
+### 29.5 Qué no es Commerce
+
+- Mercado jugador-jugador (Hesedias): Inventory.
+- Drops de sesión: evento → Inventory.
+- Simulación: no lee `commerce_orders`.
+
+---
+
 ## Apéndice A — Glosario
 
 | Término | Significado |
@@ -1408,6 +1548,8 @@ Si PLAN y el module doc chocan, se corrige el que esté obsoleto en el mismo cam
 | Party | Grupo persistente corto para PvE (Fase 5) |
 | AOI | Área de interés: qué entidades se replican a cada cliente |
 | Snapshot | Estado de entidades en un tick para replicar |
+| Nexum Coin (NC) | Moneda premium de cuenta, se compra con CASH |
+| Hesedias | Moneda de mundo por personaje; mercado de jugadores |
 
 ## Apéndice B — Modos de matchmaking iniciales
 

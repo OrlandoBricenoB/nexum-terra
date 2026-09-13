@@ -2,9 +2,9 @@
 
 **Este archivo manda sobre fantasía, builds, stats, items, skills y sensación de combate.** La arquitectura (sesiones, EntityID, Postgres vs catálogo) está en `PLAN.md`. Cómo está implementado cada sistema en código: `docs/modules/`. Si un número de balance cambia, se edita aquí, el module doc si cambia el flujo, y luego `nexum-terra/data/`. Si cambia *cómo se persiste o se simula*, se edita `PLAN.md`.
 
-Fuentes actuales: GDD Notion, Gameplay, Daño y Build, Clanes, cinco reinos, Elementos y los cuatro básicos, Items y Crafting, Pasivas, Sistema de Puntos, Sistema de Rebirth, Obtención de Skills, Sistema de Zonas, Dungeons (2026-09-13). Otras páginas de Notion siguen sin volcar.
+Fuentes actuales: GDD Notion, Gameplay, Daño y Build, Clanes, cinco reinos, Elementos y los cuatro básicos, Items y Crafting, Pasivas, Sistema de Puntos, Sistema de Rebirth, Obtención de Skills, Combates Melee, Clasificación, Rangos de Reinos, Sistema de Zonas, Dungeons (2026-09-13). Otras páginas de Notion siguen sin volcar.
 
-Estado: **normativo en lo escrito; incompleto en sistemas con página pendiente.** Caps base de maná / stamina / vitalidad y el modelo de daño estático + % están cerrados en §6. Calidad, nivel I–V, crafting de atributos, orbes de uso y mercado de jugadores están en §8.10–8.18 (Etapa B, no se simulan en Etapa A). Tasas de sprint, regeneración y % exactos por roll de atributo siguen abiertos. Mazmorras: §16 (instancia en B; spawn de mundo en C). Sistema de zonas / overworld: §15, **congelado** (Etapa C).
+Estado: **normativo en lo escrito; incompleto en sistemas con página pendiente.** Caps base de maná / stamina / vitalidad y el modelo de daño estático + % están cerrados en §6. Calidad, nivel I–V, crafting de atributos, orbes de uso y mercado de jugadores están en §8.10–8.18 (Etapa B, no se simulan en Etapa A). Tasas de sprint, regeneración y % exactos por roll de atributo siguen abiertos. Mazmorras: §16 (instancia en B; spawn de mundo en C). Sistema de zonas / overworld: §15, **congelado** (Etapa C). Monedas y modelo de negocio (NC / Hesedias, IAP): §17 (diseño); cobro y tablas: `PLAN.md` §4.14 y §29.
 
 Inspiración de ritmo (no de lore ni de calendario): [StormEdge](https://store.steampowered.com/app/2321350/StormEdge/). Acción frenética. El overworld partido en regiones es **Etapa C** (`PLAN.md` §18), no el juego que se construye ahora.
 
@@ -24,17 +24,20 @@ Tres eras, alineadas con `PLAN.md` §1.1. **No se mezclan.** El modelo de person
 | --- | --- | --- | --- |
 | Identidad: nombre, apariencia, `kingdom_id`, `clan_id` | sí (1 reino jugable + 1 clan de ese reino) | skills/pasivas/activas del clan | — (ya en B) |
 | Chat de distancia con gentilicio / nombre | sí (reglas §4) | amigos + olvido: ya en §4 | chat por zona/región |
-| Melee, guardia, dash, hotbar, swap de arma | sí | combos mágicos / elemento | — |
+| Melee, guardia, dash, hotbar, swap de arma | sí (guardia, rotura y choque §9.6) | combos mágicos / elemento | — |
+| Clasificación D–SSS (honor + asesinatos) | asesinatos de rooms PvP; honor aún 0 sin misiones | honor por PvE/misiones; umbrales | asesinatos de overworld |
+| Rangos de reino (Novicio→Élite) | todos **Novicio** (display) | desafío Soldado y torneo Élite como **rooms de evento**; Comandante por umbrales | sede Aurora, Órdenes/territorios |
 | Tres vitals + daño estático + % de equipo | sí (§6) | pasivas de clan/elemento/profesión | — |
 | Equipo (armadura + armas) | sí, slots de §8 | orbes, anillos, collar, calidad/nivel, crafting | — |
 | Skills genéticas de clan (activas/pasivas) | no; catálogo vacío | sí | — |
 | Elementos (orbes, crafting, ciclo, skills básicas) | reglas en §8.6–8.9 y §10.1; no se simulan aún | sí | — |
 | Crafting de atributos, subida de nivel de ítem, mercado | no | sí (§8.10–8.18) | se **reutiliza**; impuestos de zona → reino |
+| Dual currency NC / Hesedias + Commerce | **modelo** (ids, wallets; sin PSP) | mercado Hesedias; SKUs; grants beta | se **reutiliza** |
 | Profesiones | no | sí | — |
 | Rebirths y pasivas especiales de rebirth | no | sí | — |
 | Árbol de puntos / grind de activas | no | sí (PVE de mazmorra) | grind también en overworld cuando exista |
 | Mazmorras instanciadas | no | sí: **rooms desde el lobby** (tipos y recompensas §16) | mismas instancias; el **portal** spawnea en zonas del overworld (§16.1, §16.3). Se **sale** del shard al battle node |
-| Misiones, rangos de reino, renegados, logout bajo ataque | no | no (salvo lo que se vuelque como meta de B) | al volcar cada doc; son de mundo |
+| Misiones, renegados, logout bajo ataque | no | no (salvo lo que se vuelque como meta de B) | al volcar cada doc; son de mundo |
 | Sistema de zonas, regiones, conquista, robo en cadáveres de mundo | **no** | **no** | sí (§15). **Prohibido** prototipar en A/B |
 
 Todo es reemplazable en una build **excepto el clan en el que naces**, hasta un rebirth (§11.3). En Etapa A ese ancla ya se elige; aún no otorga skills.
@@ -315,7 +318,7 @@ No hay un **build predefinido**. El “build” en la práctica es: qué armas y
 | Pieza | Qué es |
 | --- | --- |
 | Skillbar | 6 hotslots + barras de skills (rueda del mouse cambia de barra) |
-| Melee kit | Un estilo; golpes ligero/pesado, guardia, carga. Daño canal `stamina`, número estático + % `melee` del equipo |
+| Melee kit | Un estilo; golpes ligero/pesado, guardia, carga, choque de armas (§9.6). Daño canal `stamina`, número estático + % `melee` del equipo |
 | Movilidad | Dash (y/o reemplazo según reino cuando esté en data) |
 | Loadout | Un snapshot por personaje; se congela al entrar a 1v1 |
 
@@ -634,7 +637,7 @@ El mercado es **importante**: poner en venta y que otro compre **sin estar onlin
 
 Al listar, el ítem **sale del inventario** (escrow). Evita duplicar o vender algo que sigues usando.
 
-Moneda citada: **Hesedias**. Drops de dungeon / craft de orbes alimentan este loop (farmer / millonario). Persistencia: `PLAN.md` Inventory & Economy.
+Moneda citada: **Hesedias** (unidad Hesedia). Drops de dungeon / craft de orbes alimentan este loop (farmer / millonario). Persistencia: `PLAN.md` Inventory & Economy. **Nexum Coin no se lista aquí** (§17, Commerce).
 
 ---
 
@@ -684,7 +687,7 @@ En esta sección 🔳 = click izquierdo, 🔼 = click derecho.
 | 🔳 + 🔼 + 🔼 | Habilidad especial de arma |
 | 🔳 + 🔳 + 🔼 + 🔼 | Habilidad especial de arma |
 
-Aplica a espada, hacha, lanza, daga. Detalle de frames / cancel: [Sistema de Combates Melee](https://app.notion.com/p/Sistema-de-Combates-Melee-2891e055ee8d81f4889bfe3041dc02e6?pvs=21) (pendiente).
+Aplica a espada, hacha, lanza, daga. Detalle de frames / cancel: abierto. Guardia, rotura y choque de armas: §9.6.
 
 **Arco:** no usa esos combos. Skills propias (triple flecha, lluvia de flechas, etc.).
 
@@ -705,6 +708,38 @@ Mezclados con el arma equipada. El staff no hace nada en el combo salvo la regla
 Se abandonó el click-sobre-enemigo como requisito (móvil y mando). **Target y “drop target” están abiertos.** No implementar un tab-target de MMO clásico hasta cerrar esta decisión.
 
 Gameplay Notion: [Gameplay](https://app.notion.com/p/Gameplay-2891e055ee8d813598c4d30709684bd1?pvs=21).
+
+### 9.6 Guardia, rotura y choque de armas
+
+Etapa **A** (tick de rooms). Números en `nexum-terra/data/melee.json`. La guardia es **estado** (input), no skill de hotbar. El tick no usa `if arma == espada` en el nodo del jugador: hit melee vs guardia vs hit melee es ruleset + data.
+
+#### Barra de guardia
+
+Hay una **barra de guardia**. Con la guardia alta, el daño recibido se reduce un **alto %** (tabla abajo). Ese % consume / baja la barra (tasa exacta: al implementar).
+
+| Defensa | Reducción de daño |
+| --- | --- |
+| Escudo | **60–80%**, según el `item_def` del escudo |
+| Brazos (sin escudo, guardia alta) | **40%** |
+
+Si la barra llega a 0, la guardia **se rompe**. Hasta que la barra **vuelva a cargarse**, no se puede volver a levantar.
+
+#### Rotura de guardia
+
+Al romperse:
+
+- El defensor queda **stuneado** unos pocos segundos (ms exactos: al implementar). Queda vulnerable.
+- Puede aplicarse la misma **onda de choque** que el choque de armas (§9.6 siguiente): empuje de separación. El stun da ventana para que el agresor **se aleje** (o persiga). Empuje en rotura: **sí, misma forma que el choque**; distancia en tiles: al implementar (compartida).
+
+#### Choque de armas
+
+Cuando dos golpes melee **conectan arma contra arma** (no contra hitbox de cuerpo):
+
+- Las armas **rebotan**.
+- Ambos se **separan** unos tiles (distancia exacta: al implementar).
+- Se emite una **onda de choque** (VFX + el empuje). No es skill de hotbar; es resolución de hit vs hit.
+
+Arco y staff no chocan así. Frames de parry / ventana de “clash”: al implementar; no inventar timing aquí.
 
 ---
 
@@ -730,7 +765,7 @@ No hay `scale_atk` / `scale_pow`. El cliente usa el mismo `id` para animación. 
 
 - Dash (y variante de reino cuando exista)
 - Reemplazamiento (Kawarimi)
-- Guardia (puede ser estado, no skill de hotbar)
+- Guardia: estado + barra (§9.6), no skill de hotbar
 - 4–6 activas genéricas de prueba para PvP
 - Melee como skills de arma (`weapon_skill` ids), no lógica en el nodo
 
@@ -794,7 +829,7 @@ Cómo se aprenden y ramifican: §11.5. Activas elementales suben de nivel con el
 - **PvP (Fases 3–4):** `match_records` + rating futuro. Caps de vitals pueden **equalizarse** al baseline (2000 / 2000 / 1500) o respetar gear de maná/stamina. El % por tag de equipo es la palanca de especialización; si el 1v1 debe ser fair, se capean o se ignoran mods de ítem en el ruleset `pvp_duel`. Decisión aún abierta; el modelo de tres pools no cambia.
 - **PvE / mundo:** gear importa; drops al terminar la sesión. Mejora de activas por uso (cuando exista).
 
-Rangos, misiones, divisiones: no definidos aquí. Enlaces en §12.
+Clasificación D–SSS: §11.6. Rangos de reino: §11.7. Misiones y divisiones: aún §12.
 
 ### 11.1 Puntos de habilidad y de rebirth
 
@@ -811,7 +846,7 @@ Dos monedas distintas. No se mezclan. No existe una moneda “puntos elementales
 | Una skill elemental | **1–15** |
 | Un elemento + todas sus skills (incl. pasivas) | ~**10 + 30–80** (media de la fuente) |
 
-Obtención: subir de **rango** (cantidades fijas), eventos, misiones (probabilidad de 1–2 puntos). También se **compran**: con varias monedas de juego (el medio exacto no está cerrado) y, de forma **importante**, con **dinero real**. No hay SKU, precio ni tienda definidos; el canal de compra con dinero real es requisito de diseño, no un extra opcional. Números exactos de rango: cuando se vuelque Rangos.
+Obtención: subir de **rango** (cantidades fijas por umbral de §11.6 / §11.7; el número de puntos por rango **aún no está en la fuente**), eventos, misiones (probabilidad de 1–2 puntos). También se **compran**: con monedas de juego (Hesedias u otras sinks, precios abiertos) y, de forma **importante**, con **dinero real** vía **Nexum Coin** / SKU de tienda (§17). El canal IAP es requisito de diseño, no un extra opcional. SKU y precio de puntos: abiertos.
 
 **Puntos de rebirth:** 1 por cada rebirth. Solo mejoran **pasivas especiales** (§11.4).
 
@@ -885,7 +920,7 @@ Largo plazo. No hay código ni persistencia todavía.
 
 **Habilidades:** **ninguna** de la vida anterior se guarda. Ni genéticas de clan, ni elementales, ni de profesión, ni el árbol de pasivas/activas entrenadas o compradas con puntos de habilidad. Las vuelves a aprender en la vida nueva (§11.5).
 
-**Qué más se reinicia:** clasificación (asesinatos y honor de reino), rango y el personaje.
+**Qué más se reinicia:** clasificación (asesinatos y honor, §11.6), rango de reino (§11.7) y el personaje.
 
 **Recompensas:** según el número de rebirth (p. ej. runas para subir nivel de ítems). **~3%** de nacer con un anillo legendario (referencia: anillo de Pureza). **+1 punto de rebirth.**
 
@@ -928,24 +963,72 @@ Largo plazo. El árbol enseña las pasivas de cada sección (clan/familia, profe
 
 **Tras un rebirth:** este progreso de skills parte de cero (§11.3). El equipo que conservaste no otorga las habilidades de la vida anterior.
 
+### 11.6 Clasificación (Nexumer)
+
+Fuente: *Sistema de Clasificación*. Catálogo: `nexum-terra/data/classification-ranks.json`.
+
+Un Nexumer tiene un **rango de clasificación** de **D** a **SSS**. Más adelante se pueden añadir **SSSS** y **SSSSS**; no hay umbrales para esos hasta que se escriban aquí.
+
+Subir de rango exige **los dos** umbrales a la vez (AND): **Honor** y **asesinatos**. Honor es el contador ligado a **misiones completadas** (y otras fuentes cuando existan; no inventar tasas). Asesinatos son kills persistidos del personaje.
+
+| Rango | id | Honor mín. | Asesinatos mín. |
+| --- | --- | --- | --- |
+| D | `d` | 0 | 0 |
+| C | `c` | 30 | 10 |
+| B | `b` | 100 | 30 |
+| A | `a` | 150 | 50 |
+| S | `s` | 300 | 100 |
+| SS | `ss` | 800 | 300 |
+| SSS | `sss` | 1500 | 500 |
+
+El rango **se deriva** de los contadores; no se elige a mano. El lobby de práctica **no** suma honor ni asesinatos.
+
+**Por era:** en A se pueden persistir asesinatos de rooms PvP (KO que cuente como kill: cuando exista KO/Death). Honor queda en 0 hasta misiones (B/C). El HUD puede mostrar D hasta que Honor arranque. Un rebirth pone honor, asesinatos y rango de clasificación a D / 0 / 0 (§11.3).
+
+Puntos de habilidad “al subir de rango”: cantidades fijas **aún no listadas** en la fuente; no inventar la tabla de puntos.
+
+Esto **no** es el rango de reino (§11.7) ni las Divisiones (§12).
+
+### 11.7 Rangos de reino
+
+Fuente: *Rangos de Reinos*. Catálogo: `nexum-terra/data/kingdom-ranks.json`. Distinto de la clasificación §11.6. Hay **6** rangos previstos; cuatro están nombrados. Los especiales (Sabio, Héroe y otros) se idean después; no hay ids ni requisitos.
+
+| Orden | id | Nombre | Cómo se obtiene |
+| --- | --- | --- | --- |
+| 1 | `novice` | Novicio | Al crear personaje (y tras rebirth). Estado inicial. |
+| 2 | `soldier` | Soldado | Superar el **desafío mundial** de supervivencia (abajo). Requisitos de entrada: abiertos. |
+| 3 | `commander` | Comandante | **Automático** al tener **150 Honor** y clasificación **B** (§11.6). |
+| 4 | `elite` | Élite | Top **3** del torneo mundial (abajo). |
+| 5–6 | — | Sabio, Héroe, … | Pendiente. |
+
+**Etapa A:** todos los personajes son Novicio (display). No hay desafío ni torneo.
+
+**Soldado — desafío.** Los novicios que cumplan requisitos (aún no listados) entran a una misión estratégica de supervivencia: arena cerrada, combate **entre jugadores y contra NPCs**. Fantasía de evento mundial; implementación como **room de evento** (B) o evento de overworld (C). **No** es un mapa de región ni AOI. No prototipar el overworld para esto.
+
+**Comandante.** Umbrales 150 Honor + rango B. Puede **crear una Orden**: poseer territorios del reino y gestionar la economía de ese territorio. Órdenes y territorios = **Etapa C** (`PLAN.md` §18, GDD §15). El título de Comandante puede existir en B; crear Orden no.
+
+**Élite — torneo.** Organizado en **Aurora** (fantasía). Se eligen combatientes de cada reino; **3** se convierten en Élites **ese día** (puestos 1–3). Mínimo **8 participantes** (número par). Bracket: **4** combates iniciales → **2** semifinales → **1** final. Las primeras 4 **no** van en paralelo: **misma arena**, en serie, para que se puedan ver todos. En B esto es un **room de evento** (ruleset de bracket); la sede Aurora en overworld es C.
+
+Recompensas por puesto: **abiertas**. Intención: que valga la pena el 1.º (candidato: **1 punto de rebirth**). Un premio fuerte + requisito Élite para rebirth (§11.3) empuja a **rebirthear para volver a entrar** al torneo y al desafío de Soldado.
+
+Rebirth exige rango **Élite** (§11.3); al renacer el rango de reino vuelve a Novicio.
+
 ---
 
 ## 12. Sistemas con página pendiente (no rellenar de memoria)
 
-Hay diseño en Notion que **no** está en los PDF volcados. Hasta el siguiente documento, no se inventan reglas.
+Hay diseño en Notion que **no** está en los PDF volcados. Hasta el siguiente documento, no se inventan reglas. Ya volcados fuera de esta tabla: combate melee §9.6, clasificación §11.6, rangos de reino §11.7.
 
 | Sistema | Etapa probable | Notion |
 | --- | --- | --- |
 | Misiones | mundo / PvE | [Misiones](https://app.notion.com/p/Sistema-de-Misiones-2891e055ee8d819399dbd20a84ba97bb?pvs=21) |
-| Clasificación | PvP | [Clasificación](https://app.notion.com/p/Sistema-de-Clasificaci-n-2891e055ee8d81099a35d445fcbce797?pvs=21) |
-| Rangos de reinos | mundo | [Rangos de Reinos](https://app.notion.com/p/Rangos-de-Reinos-2891e055ee8d8107a6eadb40e938c9fc?pvs=21) |
 | Divisiones | PvP / mundo | [Divisiones](https://app.notion.com/p/Sistema-de-Divisiones-2891e055ee8d8171adcddabcdc9ee393?pvs=21) |
 | Renegados | mundo | [Renegados](https://app.notion.com/p/Sistema-de-Renegados-2891e055ee8d811b9ba3c68c9c51b4e8?pvs=21) |
 | Robo | Etapa C (cadáveres; se enlaza a §15) | [Robo](https://app.notion.com/p/Sistema-de-Robo-2891e055ee8d81c4aa95d08690fc7bcb?pvs=21) |
 | KO y Death | todas | [KO y Death](https://app.notion.com/p/Sistema-de-KO-y-Death-2891e055ee8d819a8269d89a6d3fabaf?pvs=21) |
 | Regeneración | combate | [Regeneración](https://app.notion.com/p/Sistema-de-Regeneraci-n-2891e055ee8d8173a477eb396bca8b6f?pvs=21) |
 | Logout bajo ataque | mundo | [Logout bajo ataque](https://app.notion.com/p/Sistema-de-Logout-Bajo-Ataque-2891e055ee8d816f9acbc7f44028196c?pvs=21) |
-| Órdenes | mundo / party | [Órdenes](https://app.notion.com/p/Sistema-de-rdenes-2891e055ee8d8101b7a0f3d0f391aa65?pvs=21) |
+| Órdenes | mundo / party | [Órdenes](https://app.notion.com/p/Sistema-de-rdenes-2891e055ee8d8101b7a0f3d0f391aa65?pvs=21) — Comandante puede crear Orden (§11.7); territorios = C |
 | Zonas | **Etapa C** (volcado en §15) | [Zonas](https://app.notion.com/p/Sistema-de-Zonas-2891e055ee8d81588edce4a3132073d2?pvs=21) |
 | Dungeons | **Etapa B** instancia; spawn en mapa **Etapa C** (volcado en §16) | [Dungeons](https://app.notion.com/p/Dungeons-2891e055ee8d81a28844e2edf7155084?pvs=21) |
 | Pasivas especiales (resto del catálogo) | largo plazo | [Pasivas especiales](https://app.notion.com/p/Pasivas-Especiales-2891e055ee8d8187a6adfd3f1464d662?pvs=21) — patrón y ejemplo en §11.4 |
@@ -962,10 +1045,19 @@ Bandas sonoras citadas: **Base**; **Base Boss — Tenebroso — Acción**. Catá
 
 ## 14. Trabajo pendiente de diseño (aquí, no en PLAN)
 
-- [ ] Volcar páginas Notion de §12 (reinos/clanes en §3; pasivas, puntos, rebirth y obtención de skills en §11)
+- [ ] Volcar páginas Notion de §12 (reinos/clanes en §3; pasivas, puntos, rebirth y obtención de skills en §11; melee/clasificación/rangos de reino volcados)
+- [ ] ms de stun al romper guardia; tiles de onda de choque; tasa de gasto/carga de barra de guardia
+- [ ] % exacto por `item_def` de escudo (banda 60–80)
+- [ ] Puntos de habilidad por umbral de clasificación / rango de reino
+- [ ] Requisitos de entrada al desafío de Soldado
+- [ ] Recompensas 1.º / 2.º / 3.º del torneo Élite (candidato: 1 punto de rebirth al 1.º)
+- [ ] Rangos especiales de reino (Sabio, Héroe, …) y umbrales SSSS / SSSSS
 - [ ] Catálogo de pasivas especiales de rebirth (además del ejemplo de CD)
 - [ ] Quintos clanes: ids, fantasía y skills; no están en `clans.json`
-- [ ] Tienda de puntos de habilidad: qué monedas de juego, precios; IAP con dinero real (canal obligatorio, SKU/precio abiertos)
+- [ ] Tienda de puntos de habilidad: precios en Hesedias y/o NC; SKU IAP concreto (canal obligatorio, §17)
+- [ ] Catálogo v1 de SKU de microtransacciones (cosmetic / currency / power) y packs de NC
+- [ ] Beneficios concretos de Patreon/crowdfunding por temporada de beta
+- [ ] Beneficios de suscripción (si se abre el canal alternativo)
 - [ ] Cerrar dash racial de Fontaine, Terrara, Spectra (Aurora/Aerion documentados, no otorgados)
 - [ ] Unificar botones duplicados (R / R2 / L2, Space, rueda, guardia vs swap)
 - [ ] Layout de mando y móvil
@@ -1055,7 +1147,7 @@ Se conquistan territorios **dispersando el maná** de la **estatua de poder** de
 
 - **% de suerte** de farmeo en esa zona (número exacto: al implementar C).
 - **Todo el dinero** generado ahí (NPC, impuestos, tiendas, etc.) va al **reino**.
-- Los reinos tienen **gestión automática**. A partir de cierto rango se ve el estado (si falta dinero, si no cubre mantenimiento: radar, mejoras, etc.). Rangos de reino: página Notion pendiente.
+- Los reinos tienen **gestión automática**. A partir de cierto rango de reino (§11.7, Comandante+) se ve el estado (si falta dinero, si no cubre mantenimiento: radar, mejoras, etc.).
 
 **Si un reino conquista todos los territorios:** los demás pierden **50%** de su tesorería, entregada al conquistador. Cómo se reparte ese botín (elegir **una** al abrir C; no las dos):
 
@@ -1161,3 +1253,63 @@ Dungeons de **eventos importantes**: mucho más grandes; varias dificultades en 
 - IA, skills de monstruo, HP de jefes.
 - UI de cola del lobby (marca: `docs/brand/BRAND.md`).
 - Código de spawn, AOI o zonas: `PLAN.md` §18.
+
+---
+
+## 17. Economía de jugador y modelo de negocio
+
+Arquitectura de cobro, tablas y REST: `PLAN.md` §4.14, §10.8, §29, ADR-014. Aquí va **qué siente el jugador** y las tasas de diseño. No se implementa PSP en Etapa A; el modelo de dos monedas **sí** se respeta desde el primer wallet.
+
+### 17.1 Dinero del juego
+
+Dos monedas. No se mezclan. Plural canónico de la de mundo: **Hesedias** (unidad: Hesedia).
+
+| Moneda | Qué es | Cómo se obtiene | Dónde vive |
+| --- | --- | --- | --- |
+| **Nexum Coin (NC)** | Premium | CASH (packs) o grant de beta/ops | Cuenta (`user_wallets`) |
+| **Hesedias** | Moneda normal del juego | Drops, mercado, craft, sinks; un SKU **puede** entregar Hesedias | Personaje (`character_wallets`) |
+
+Tasa de packs de NC (diseño, no FX en vivo; el PSP se queda comisión): **1 USD = 15 NC**. Referencia: **100 USD = 1 500 NC**. Packs concretos (montos de tarjeta) se listan en catálogo al abrir tienda.
+
+Reglas:
+
+- El mercado de jugadores (§8.18) **solo** Hesedias.
+- No hay cambio libre NC ↔ Hesedias. NC → Hesedias solo como **SKU**.
+- **No cash-out** a dinero real.
+- Puntos de habilidad (§11.1) son un tercer recurso de build, no una moneda de mercado; se pueden vender como SKU (NC o Hesedias).
+
+### 17.2 Before production (beta)
+
+En versiones beta se pueden ofrecer **beneficios únicos y personalizados** a testers en **Patreon u otra plataforma de crowdfunding**. Es el primer impulso económico del proyecto.
+
+Los beneficios son **entitlements de cuenta** (cosmético, título, item bound, NC de cortesía, etc.). Se diseñan por temporada de beta **aquí** cuando existan; no un `if` en el nodo del jugador. Cumplimiento: grant ops (`PLAN.md` §29.2), no checkout de tarjeta.
+
+### 17.3 In production
+
+Pagos automatizados con **tarjeta crédito/débito**: el jugador paga y recibe lo comprado, como cualquier servicio online. El cliente no confirma “ya pagué”.
+
+Canales:
+
+| Canal | Prioridad | Qué vende |
+| --- | --- | --- |
+| **Microtransacciones** | **Principal** | Elementos virtuales o mejoras de experiencia: objetos **decorativos**, **armas**, **monedas**, **ventajas competitivas** |
+| **Suscripción** | Alternativo | Membresía mensual/anual con beneficios de catálogo |
+| **Infoproductos** | Alternativo | Guías, tutoriales, trucos, estrategias, consejos. Fuera del tick (web o mismo checkout de cuenta) |
+
+Cada SKU de microtransacción lleva un tag de catálogo:
+
+| `tag` | Ejemplos | Combate |
+| --- | --- | --- |
+| `cosmetic` | skins, títulos, VFX de presentación | No entra al snapshot de daño |
+| `currency` | packs NC, SKU de Hesedias, puntos de habilidad | Economía / build |
+| `power` | armas, gear, ventajas competitivas | **Sí** puede entrar al loadout. En `pvp_duel` / `pvp_arena` sigue abierta la palanca de **equalizar** gear (§11). El tag obliga a no olvidar esa decisión; no la cierra |
+
+Armas y power IAP son **producto aceptado**, no un accidente. Si un modo debe ser fair, lo filtra el **ruleset**, no se borra el canal de venta.
+
+### 17.4 Qué no se inventa aquí
+
+- Proveedor de pagos (adaptador en PLAN).
+- Lista cerrada de SKUs ni precios de puntos.
+- Lista de recompensas Patreon de una temporada concreta.
+- Impuestos de zona / tesorería de reino (eso es Etapa C, §15.4) sobre Hesedias de mundo, no sobre NC.
+
