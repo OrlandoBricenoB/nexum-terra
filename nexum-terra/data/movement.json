@@ -1,0 +1,7 @@
+{
+  "tile_px": 32,
+  "walk_tiles_per_s": 1.5,
+  "sprint_multiplier": 1.5,
+  "sprint_notes": "Plus 50 percent. Double speed (2.0) is the playtest alternative if 1.5 feels slow.",
+  "internal_unit": "pixels"
+}

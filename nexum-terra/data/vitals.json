@@ -1,0 +1,8 @@
+{
+  "mana": 2000,
+  "stamina": 2000,
+  "vitality": 1500,
+  "mana_reserve_mult": 3,
+  "mana_reserve": 6000,
+  "hold_z_charge_pct_of_mana_cap_per_s": 0.05
+}

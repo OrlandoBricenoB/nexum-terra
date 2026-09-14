@@ -926,8 +926,8 @@ El mismo loop corre en lobby y en batalla. El ruleset apaga scoring, AI o persis
 | Ruleset | Scoring | AI | Persistencia | Friendly fire | Respawn |
 | --- | --- | --- | --- | --- | --- |
 | `practice_lobby` | no | dummies idle | no | no | inmediato |
-| `pvp_duel` | sí | no | match_records | no | según modo |
-| `pvp_arena` | sí | no | match_records | no | round o none |
+| `pvp_duel` | sí (1.ª Death) | no | match_records | no | **none** |
+| `pvp_arena` | sí (Bo3 team wipe) | no | match_records | no | entre rondas |
 | `pve_dungeon` | objetivos | sí | match + drops | configurable | checkpoints |
 | `open_world` | **reservado Etapa C** | — | — | — | — |
 
@@ -948,7 +948,7 @@ El servidor carga los mismos archivos que el cliente (o un subset). El cliente n
 
 ### 13.5 Zona de práctica
 
-Dummies = `kind: dummy`, `controller: none`, vitals altos o infinitos según data. Hits válidos para feedback (números, animación). **Cero** escritura a `match_records` y a progression.
+Dummies = `kind: dummy`, `controller: none`, vitals **infinitos** (`docs/GDD.md` §0.1). Hits válidos para feedback (números, animación). **Cero** escritura a `match_records` y a progression. Sin regen de quieto en `pvp_duel`/`pvp_arena` (GDD §12.6).
 
 ### 13.6 IA (Fase 5, gancho ahora)
 
@@ -1010,7 +1010,7 @@ El cliente trata `match:ready` como **cambio de sesión de simulación**, no com
 
 - Login/register UI
 - Chat flotante (WS)
-- Nametags
+- Nametags **solo en lobby** (nombre + icono de reino). En Battle: no nametag.
 - Movimiento 8 direcciones, **multientrada** (teclado, ratón, gamepad, táctil virtual)
 - Predicción
 - HUD de cola, invites, lista de live matches
@@ -1030,7 +1030,7 @@ Capa `adapters/input` normaliza a `Intent { move: Vector2, aim: Vector2, skills:
 
 ### 15.4 Top-down 2D
 
-Y-sort, colliders en mapa, aim hacia el cursor o stick derecho. El servidor usa la misma geometría de colisión exportada (TileMap/Physics layers compartidas).
+Resolución nativa **640×360**, tiles **32 px**, viewport **20×11** tiles (`docs/GDD.md` §0.1, `nexum-terra/data/presentation.json`). Y-sort, colliders en mapa, aim hacia el cursor. El servidor usa la misma geometría de colisión. Mapas: lobby greybox; `arena_01` **25×15**; `arena_02` **100×100**. Arte placeholder.
 
 ---
 
@@ -1096,7 +1096,7 @@ Objetivo: hub interactivo.
 - `core/` Entity + Movement + Ruleset `practice_lobby`.
 - Dedicated lobby headless: recibe inputs, valida, broadcast snapshots.
 - Cliente: predicción, interpolación de otros, cámara top-down.
-- UI: login REST, chat flotante WS, nametag.
+- UI: login REST, chat flotante WS, nametag **de lobby** (nombre + icono de reino).
 - Join token de lobby.
 - Dummies: daño autoritativo **sin** persistir stats.
 - Presencia `lobby`.
@@ -1107,7 +1107,7 @@ Objetivo: hub interactivo.
 
 Objetivo: puente lobby → combate.
 
-- Colas in-memory `1v1` y `5v5` (5v5 puede mockearse con bots de relleno **solo si** está flaggeado; preferible exigir N reales o alinear el modo).
+- Colas in-memory `1v1` y `5v5`. El 5v5 **exige 10 jugadores reales** (sin bots de relleno). Win condition del 5v5: GDD §0.1 (pendiente).
 - Salas privadas + invite WS.
 - Orchestrator: `SessionSpawner` local, allocator de puertos, heartbeat, teardown.
 - Flujo `match:ready` → cliente cambia de mapa y de puerto.

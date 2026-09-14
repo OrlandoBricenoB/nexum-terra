@@ -1,0 +1,21 @@
+{
+  "native_resolution": { "w": 640, "h": 360 },
+  "tile_px": 32,
+  "viewport_tiles": { "w": 20, "h": 11 },
+  "character": {
+    "body_width_px": 32,
+    "canvas_candidates_px": [
+      [48, 48],
+      [32, 62]
+    ]
+  },
+  "maps": {
+    "lobby": { "notes": "Greybox rectangle. Social chairs one side, dummies the other." },
+    "arena_01": { "tiles": { "w": 25, "h": 15 }, "mode": "pvp_duel" },
+    "arena_02": {
+      "tiles": { "w": 100, "h": 100 },
+      "mode": "pvp_arena",
+      "layout": "Landmarks and lanes so two teams of 5 meet; avoid empty corners as the only spawn."
+    }
+  }
+}

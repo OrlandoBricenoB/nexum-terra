@@ -1,0 +1,27 @@
+{
+  "stage": "A",
+  "notes": "Rewards TBD. Progress from match_records.",
+  "missions": [
+    {
+      "id": "win-3-duels",
+      "title": "Gana 3 matchs 1v1",
+      "kind": "win",
+      "modes": ["quick_1v1"],
+      "count": 3
+    },
+    {
+      "id": "play-10-matches",
+      "title": "Participa en 10 matchs 1v1 o 5v5",
+      "kind": "participate",
+      "modes": ["quick_1v1", "quick_5v5"],
+      "count": 10
+    },
+    {
+      "id": "win-5-arenas",
+      "title": "Gana 5 matchs 5v5",
+      "kind": "win",
+      "modes": ["quick_5v5"],
+      "count": 5
+    }
+  ]
+}

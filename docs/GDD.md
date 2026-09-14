@@ -2,9 +2,9 @@
 
 **Este archivo manda sobre fantasía, builds, stats, items, skills y sensación de combate.** La arquitectura (sesiones, EntityID, Postgres vs catálogo) está en `PLAN.md`. Cómo está implementado cada sistema en código: `docs/modules/`. Si un número de balance cambia, se edita aquí, el module doc si cambia el flujo, y luego `nexum-terra/data/`. Si cambia *cómo se persiste o se simula*, se edita `PLAN.md`.
 
-Fuentes actuales: GDD Notion, Gameplay, Daño y Build, Clanes, cinco reinos, Elementos y los cuatro básicos, Items y Crafting, Pasivas, Sistema de Puntos, Sistema de Rebirth, Obtención de Skills, Combates Melee, Clasificación, Rangos de Reinos, Sistema de Zonas, Dungeons, Misiones, Divisiones, Renegados, Robo, KO y Death, Regeneración, Logout bajo ataque, Médico, Espadachín, Sensor (2026-09-13). Pendiente de volcar: skills de clan.
+Fuentes actuales: GDD Notion, Gameplay, Daño y Build, Clanes, cinco reinos, Elementos y los cuatro básicos, Items y Crafting, Pasivas, Sistema de Puntos, Sistema de Rebirth, Obtención de Skills, Combates Melee, Clasificación, Rangos de Reinos, Sistema de Zonas, Dungeons, Misiones, Divisiones, Renegados, Robo, KO y Death, Regeneración, Logout bajo ataque, Médico, Espadachín, Sensor; skills de clan: Omnivisus, Gadgetrix, Entomante, Nachtsoldaten, Pulmonarius, Sangrafilos, Umbromante, Geisteswaffen (2026-09-13). Pendiente de volcar: skills de los 8 clanes sin PDF.
 
-Estado: **normativo en lo escrito; incompleto donde se marca abierto.** Caps base de maná / stamina / vitalidad y el modelo de daño estático + % están cerrados en §6. Calidad, nivel I–V, crafting de atributos, orbes de uso y mercado de jugadores están en §8.10–8.18 (Etapa B, no se simulan en Etapa A). Tasa de sprint abierta. Regeneración: reglas en §12.6 (tasas numéricas abiertas). Mazmorras: §16 (instancia en B; spawn de mundo en C). Sistema de zonas / overworld: §15, **congelado** (Etapa C). Misiones / KO / profesiones: §12. Monedas y modelo de negocio (NC / Hesedias, IAP): §17 (diseño); cobro y tablas: `PLAN.md` §4.14 y §29.
+Estado: **normativo en lo escrito; incompleto donde se marca abierto.** Caps, melee A, kit, cámara 640×360 y mapas de rooms: §0.1. Etapa B/C y el resto de §14 siguen abiertos.
 
 Inspiración de ritmo (no de lore ni de calendario): [StormEdge](https://store.steampowered.com/app/2321350/StormEdge/). Acción frenética. El overworld partido en regiones es **Etapa C** (`PLAN.md` §18), no el juego que se construye ahora.
 
@@ -24,11 +24,11 @@ Tres eras, alineadas con `PLAN.md` §1.1. **No se mezclan.** El modelo de person
 | --- | --- | --- | --- |
 | Identidad: nombre, apariencia, `kingdom_id`, `clan_id` | sí (1 reino jugable + 1 clan de ese reino) | skills/pasivas/activas del clan | — (ya en B) |
 | Chat de distancia con gentilicio / nombre | sí (reglas §4) | amigos + olvido: ya en §4 | chat por zona/región |
-| Melee, guardia, dash, hotbar, swap de arma | sí (guardia, rotura y choque §9.6) | combos mágicos / elemento | — |
+| Melee, guardia, dash, hotbar, swap de arma | sí (guardia, rotura y choque §9.6); **sin** instancias de arma/pecho | combos mágicos / elemento; arma y pecho | — |
 | Clasificación D–SSS (honor + asesinatos) | asesinatos de rooms PvP; honor aún 0 sin misiones | honor por PvE/misiones; umbrales | asesinatos de overworld |
 | Rangos de reino (Novicio→Élite) | todos **Novicio** (display) | desafío Soldado y torneo Élite como **rooms de evento**; Comandante por umbrales | sede Aurora, Órdenes/territorios |
-| Tres vitals + daño estático + % de equipo | sí (§6) | pasivas de clan/elemento/profesión | — |
-| Equipo (armadura + armas) | sí, slots de §8 | orbes, anillos, collar, calidad/nivel, crafting | — |
+| Tres vitals + daño estático + % de equipo | sí (§6); en A el `%` de equipo es **0** (no hay gear) | pasivas de clan/elemento/profesión | — |
+| Equipo (armadura + armas) | **no** (melee y skills salen de data; slots de §8 en B) | orbes, anillos, collar, calidad/nivel, crafting; 1 arma + 1 pecho por reino | — |
 | Skills genéticas de clan (activas/pasivas) | no; catálogo vacío | sí | — |
 | Elementos (orbes, crafting, ciclo, skills básicas) | reglas en §8.6–8.9 y §10.1; no se simulan aún | sí | — |
 | Crafting de atributos, subida de nivel de ítem, mercado | no | sí (§8.10–8.18) | se **reutiliza**; impuestos de zona → reino |
@@ -41,6 +41,39 @@ Tres eras, alineadas con `PLAN.md` §1.1. **No se mezclan.** El modelo de person
 | Sistema de zonas, regiones, conquista, robo en cadáveres de mundo | **no** | **no** | sí (§15). **Prohibido** prototipar en A/B |
 
 Todo es reemplazable en una build **excepto el clan en el que naces**, hasta un rebirth (§11.3). En Etapa A ese ancla ya se elige; aún no otorga skills.
+
+### 0.1 Recorte cerrado Etapa A (rooms)
+
+Decisiones de producto (2026-09-13). Si el código contradice esto, se corrige el código o se actualiza esta tabla.
+
+| Tema | Regla |
+| --- | --- |
+| `pvp_duel` win | Primera **Death** gana. Sin respawn en la arena. Disconnect = forfeit (`PLAN.md` §12.7 rooms). |
+| KO → Death | Vitalidad 0 = KO. Levantarse en A = **mantener una tecla** el tiempo de canal del GDD (§12.5: 8 s en el 1.er KO / Novicio). **Sin** minijuego de puntería (eso es diseño posterior). Si se suelta la tecla o vencen 30 s → Death. |
+| Dummy de lobby | Vitals **infinitos** (no KO). Solo feedback de hit. |
+| Equipo | **Ningún** `item_instance` en A. Pecho/arma/placeholder por reino = Etapa B. PvP nace equalizado. |
+| Regen de quieto (hasta 50 %) | **Solo open world (Etapa C).** Nunca en arena ni en mazmorra. |
+| Lobby | Sin regen de quieto. **Sí** tiles de reposo (sillas/camas): stamina y vitalidad según §12.6 Reposo. Hold Z recarga maná desde reserva. |
+| Mazmorra (B) | Igual que arena: hold Z + pociones; sin quieto. Sillas solo si el mapa las pone. |
+| Pociones | Inventario/catálogo = **Etapa B**. En A no hay poción que beber. Cuando existan: en arena/mazmorra se beben **en cualquier momento**, pero **sin moverse** mientras. El rival no tiene que estar KO. Cap de usos por match: abierto. |
+| Salto | **No** en A (ni en 2D hasta que un mapa lo pida). Espacio = golpe ligero. |
+| Kit A | **Las mismas 4** para todos (§10.0). No se gated por reino. |
+| Colas A | `quick_1v1` y `quick_5v5` (10 jugadores reales, sin bots). |
+| `pvp_arena` win | Al mejor de **3 rondas**. Cada ronda es **team wipe** (5 Deaths del equipo rival). Respawn entre rondas; no durante la ronda. |
+| Skills A | Kit compartido §10.0: `iaido-dash`, `reverse-dash`, `kawarimi`, `magic-armor`. |
+| Sprint | Andar **1,5 tiles/s** (simulado en px). Correr = **×1,5** (+50 %). Alternativa de playtest: ×2. Sin gasto de stamina en A. |
+| Combo melee | Ligero **100**, pesado **250**, combo 🔳🔳🔳 = **100+100+150 (350)**. Cancel post-hit a dash/skill. Carga 5 s → **+25 %** melee solo al **100 %**. |
+| Guardia A | Brazos **40 %**. Pool **500** (por daño, no por tiempo). Hit a **carga 100 %** rompe: **0** daño, stun 400 ms, separación **1** tile. Clash arma-arma: **2** tiles. |
+| Maná | Reserva = **3×** cap (6000). Hold Z: **5 % del cap / s** desde la reserva. Equipo/pasivas de carga = B+. |
+| Sillas | **30 s** a llenar vit + stam + maná + reserva. |
+| 5v5 lectura | Tinte sutil **azul** aliado / **rojo** rival (silueta). Sin nametag. |
+| Misiones A | `win-3-duels`, `play-10-matches`, `win-5-arenas`. Recompensas luego. |
+| Presentación | Native **640×360**. Tiles **32**. Viewport **20×11** tiles. Arena 1v1 **25×15**. 5v5 **100×100**. Sprite: ancho cuerpo **32 px**; lienzo 48×48 o 32×62. Arte = mockup/greybox. Icono de reino = cuadrado verde. Fuente **Pixeloid Sans**. Mando/móvil: después. |
+| Create | Nombre + **1 reino** + **1 clan** de ese reino. Sprite genérico por reino (tinte). Sin editor de cara. |
+| Nametag | **Lobby:** nombre + icono de reino. **Luchador en battle:** sin nametag ni barras flotantes. **Espectador:** overlay con **nombres** (broadcast); los peleadores no lo ven. Chat §4. |
+| HUD combate | Solo **tus** 3 vitals. En 5v5: tinte azul/rojo de silueta. Sin barras flotantes. |
+| Mapa lobby | Un rectángulo greybox: social (sillas) en un lado, dummy(s) en el otro. |
+| Mapas PvP | `arena_01`: **25×15** tiles. `arena_02`: **100×100**, con hitos para que los equipos se encuentren. |
 
 ---
 
@@ -89,20 +122,20 @@ Al crear personaje el jugador elige **un** reino jugable y **un** clan de ese re
 | Reinos jugables | `fontaine`, `terrara`, `spectra`, `aerion` |
 | `aurora` | Solo GMs; no aparece en el create de jugador |
 | `clan_id` | Obligatorio; su `kingdom_id` debe coincidir con el reino elegido |
-| Skills | `skills: []` en data. **Cero** activas y **cero** pasivas de clan o de reino. El tick no lee el clan para daño |
+| Skills | Kit A **igual para todos** (§10.0). Clan `skills: []`. El tick no lee reino ni clan para daño. |
 | Permanencia | Fuera de rebirth, el clan de nacimiento no se cambia (es lo único no reemplazable de la build). El rebirth **corta toda afiliación** al clan anterior: naces de nuevo en otro reino/clan; **ninguna habilidad** de esa vida se guarda (§11.3) |
 
 La fantasía de cada clan (ojos, insectos, cristales, etc.) se escribe aquí para no perderla. **No se implementa** hasta que existan entradas de skill en data.
 
 Idea de mundo (Etapa C, no A ni B): **tiendas de ropa distintas por reino**. Vestirte de ninja sin ser de Aerion implica ir a comprar allá.
 
-Movilidad citada en el GDD original (dash samurái / Kawarimi / Fontain): documentada para más adelante. En primeras etapas el dash de combate, si existe, es un skill genérico de kit, no un racial del reino.
+Movilidad y defensas de A: kit compartido de Nexum Terra (§10.0). El reino/clan es identidad (y, en B, skills de clan). No se reparte 1 skill por reino.
 
 ### 3.2 Aurora (`aurora`)
 
 Ciudad antigua del **shogunato**. Murallas de índice Kamakura. Colores **negro y blanco**. Época: pasado. Hostilidad: **neutral**. Arquitectura de samurái: madera alzada contra inundaciones, paredes que rodean el área frente a enemigos del exterior.
 
-El ambiente de **ciudad** en overworld es **zona celeste** (§15.2): no se ataca y no se usan habilidades. Eso sustituye la idea previa de “puedes pegar pero un NPC te parte”. Fuera de Etapa C, Aurora es solo identidad/lore (GMs en create). Dash / samurái asociado en fuentes previas; no se otorga ahora.
+El ambiente de **ciudad** en overworld es **zona celeste** (§15.2): no se ataca y no se usan habilidades. Eso sustituye la idea previa de “puedes pegar pero un NPC te parte”. Fuera de Etapa C, Aurora es identidad/lore (GMs en create). El dash samurái del kit A (`iaido-dash`) es **de todos**, no un racial de Aurora.
 
 Gentilicio de chat: no aplica a jugadores (no nacen aquí).
 
@@ -110,7 +143,7 @@ Gentilicio de chat: no aplica a jugadores (no nacen aquí).
 
 Ambiente de **futuro**; referencia de sensación: capital del oeste tipo ciudad de Bulma. Gris, celeste, cristal. Territorio alrededor invadido por aliens (campos extra: TBD). Época: futuro. Hostilidad: **activa**. Arquetipos de fantasía: **científicos** (magos de la tecnología). Edificios altos que rematan en punta circular, colores llamativos, césped junto a carreteras con vehículos voladores.
 
-Nota de diseño (Omnivisus): ojo inspirado en byakugan en un clan científico; cuatro clanes que estudian artes distintas. Skills: más adelante.
+Nota de diseño (Omnivisus): ojo inspirado en byakugan en un clan científico; cuatro clanes que estudian artes distintas. Skills: §12.9.
 
 Gentilicio de chat: **Fontainer**.
 
@@ -130,7 +163,7 @@ Gentilicio: **Spectro**.
 
 Ciudad futurista en el **cielo**, nubes y cielo azul. Verde esmeralda, blanco y dorado. Época: futuro. Hostilidad: **activa**. Arquetipos: guerreros del cielo. Planta en estrella con círculos en puntas y centros; flota por maquinaria de los habitantes. Rascacielos de cristal junto a edificios de aspecto contemporáneo.
 
-Gentilicio: **Aerion**. Kawarimi / ninja: más adelante, no se otorga al elegir el reino.
+Gentilicio: **Aerion**.
 
 ### 3.7 Clanes (16, 4 por reino jugable)
 
@@ -138,41 +171,41 @@ Los clanes son de los reinos en los que puedes nacer. Aurora no tiene clan jugab
 
 **Fontaine**
 
-| `clan_id` | Nombre | Fantasía (skills más adelante) |
+| `clan_id` | Nombre | Fantasía |
 | --- | --- | --- |
-| `omnivisus` | Omnivisus | Ojos científicos: estado físico de una persona y visión 360° a larga distancia (una región entera). Combate: puntos vulnerables / sistema nervioso en melee. |
-| `sagitta` | Sagitta (flecha, latín) | Clan antiguo. Magia concentrada en “arcos” (hoy varían). Largo alcance, tiros precisos. Magia interior canalizada con **canalizadores cibernéticos**. |
-| `gadgetrix` | Gadgetrix | Gadgets de protección y ataque, para sí o para aliados. |
-| `ciberlance` | Ciberlance | Científicos de mejoras biónicas de alto nivel. El melee más fuerte de Fontaine frente a la precisión de Omnivisus. |
+| `omnivisus` | Omnivisus | Ojos científicos: estado físico de una persona y visión 360° a larga distancia (una región entera). Combate: puntos vulnerables / sistema nervioso en melee. Skills §12.9. |
+| `sagitta` | Sagitta (flecha, latín) | Clan antiguo. Magia concentrada en “arcos” (hoy varían). Largo alcance, tiros precisos. Magia interior canalizada con **canalizadores cibernéticos**. Skills: sin PDF. |
+| `gadgetrix` | Gadgetrix | Gadgets de protección y ataque, para sí o para aliados. Skills §12.9. Crafting de orbes +25 % (§8.7). |
+| `ciberlance` | Ciberlance | Científicos de mejoras biónicas de alto nivel. El melee más fuerte de Fontaine frente a la precisión de Omnivisus. Skills: sin PDF. |
 
 **Spectra**
 
-| `clan_id` | Nombre | Fantasía (skills más adelante) |
+| `clan_id` | Nombre | Fantasía |
 | --- | --- | --- |
-| `herbora` | Herbora | Control de plantas de origen mítico o demoníaco. |
-| `entomante` | Entomante | *ento-* insectos + *-mante* dominio. Bichos que habitan en su cuerpo. (Canal `mana_steal` cuando existan skills.) |
-| `pyrofauces` | Pyrofauces | Conexión de maná al inframundo; llamas del infierno y otros elementos de ese eje. |
-| `nachtsoldaten` | Nachtsoldaten | “Soldados de la noche”. Naturaleza + artes oscuras + disciplina de soldado. |
+| `herbora` | Herbora | Control de plantas de origen mítico o demoníaco. Skills: sin PDF. |
+| `entomante` | Entomante | *ento-* insectos + *-mante* dominio. Bichos que habitan en su cuerpo. (Canal `mana_steal` cuando existan skills.) Skills §12.9. |
+| `pyrofauces` | Pyrofauces | Conexión de maná al inframundo; llamas del infierno y otros elementos de ese eje. Skills: sin PDF. |
+| `nachtsoldaten` | Nachtsoldaten | “Soldados de la noche”. Naturaleza + artes oscuras + disciplina de soldado. Skills §12.9. |
 
 **Terrara**
 
-| `clan_id` | Nombre | Fantasía (skills más adelante) |
+| `clan_id` | Nombre | Fantasía |
 | --- | --- | --- |
-| `stellamante` | Stellamante | Maná en ataques luminosos tan rápidos que los llaman estrellas. |
-| `pulmonarius` | Pulmonarius | Fuerza sobrehumana; distancia y melee. |
-| `vitamancers` | Vitamancers | Manipulan energía vital: absorber cadáveres; proyectiles/orbes lentos que drenan vitalidad; materia extraña (minas, alfombra que roba vital a quien la toca); sacrificio propio para curar a otro (coste: un KO al caster, el aliado queda a 50% vit y stamina). |
-| `sangrafilos` | Sangrafilos | Maná en metal: filos, cobertura, combate de **sangrado** (efecto secundario). |
+| `stellamante` | Stellamante | Maná en ataques luminosos tan rápidos que los llaman estrellas. Skills: sin PDF. |
+| `pulmonarius` | Pulmonarius | Fuerza sobrehumana; distancia y melee. Skills §12.9. |
+| `vitamancers` | Vitamancers | Manipulan energía vital: absorber cadáveres; proyectiles/orbes lentos que drenan vitalidad; materia extraña (minas, alfombra que roba vital a quien la toca); sacrificio propio para curar a otro (coste: un KO al caster, el aliado queda a 50% vit y stamina). Skills: sin PDF. |
+| `sangrafilos` | Sangrafilos | Maná en metal: filos, cobertura, combate de **sangrado** (efecto secundario). Skills §12.9. |
 
 **Aerion**
 
-| `clan_id` | Nombre | Fantasía (skills más adelante) |
+| `clan_id` | Nombre | Fantasía |
 | --- | --- | --- |
-| `umbromante` | Umbromante | Umbra: dominio de la sombra. Referencia de sensación: Nara. |
-| `geisteswaffen` | Geisteswaffen | Clan antiguo. Poder en herramientas: espada moldeable de tecnología. Medio alcance; hojas de chakra tipo samurái. |
-| `crystallomante` | Crystallomante | Convierte materia elemental en cristal; proyectiles, muros, dragón de cristal, encierro. Necesita cristales cerca: invoca **generadores** que sueltan cristales periódicamente. |
-| `sonomantes` | Sonomantes | Sonido para deshabilitar: daño directo o ilusiones. Potenciado por tecnología. Ilusiones sonoras; ondas que crecen en círculo. |
+| `umbromante` | Umbromante | Umbra: dominio de la sombra. Referencia de sensación: Nara. Skills §12.9. |
+| `geisteswaffen` | Geisteswaffen | Clan antiguo. Poder en herramientas: espada moldeable de tecnología. Medio alcance; hojas de chakra tipo samurái. Skills §12.9. |
+| `crystallomante` | Crystallomante | Convierte materia elemental en cristal; proyectiles, muros, dragón de cristal, encierro. Necesita cristales cerca: invoca **generadores** que sueltan cristales periódicamente. Skills: sin PDF. |
+| `sonomantes` | Sonomantes | Sonido para deshabilitar: daño directo o ilusiones. Potenciado por tecnología. Ilusiones sonoras; ondas que crecen en círculo. Skills: sin PDF. |
 
-Listas detalladas de skills por clan (páginas Notion) se vuelcan cuando se activen las skills, no antes. Un **5.º clan por reino** se desbloquea por rebirth de cuenta (§11.3); aún no hay ids en data.
+Listas detalladas de skills: §12.9 (8 clanes volcados; 8 sin PDF). Un **5.º clan por reino** se desbloquea por rebirth de cuenta (§11.3); aún no hay ids en data. **No** se llenan `skills` en `clans.json` ni el tick lee el clan hasta Etapa B.
 
 ---
 
@@ -190,6 +223,11 @@ Las personas se **presentan** escribiendo su nombre en ese chat. Hay que recorda
 Al **desconectarse**, el personaje **olvida** los nombres de quienes no son amigos y se presentaron. **Los amigos siempre leen tu nombre** en el chat de distancia.
 
 Contrato de sistema (cuando se implemente): la resolución nombre vs gentilicio es del servicio de Chat + Social (amigos), no del tick ENet. Ver `PLAN.md`.
+
+**Nametag sobre el cuerpo (no es chat):**
+
+- **Lobby:** nombre + icono de reino. Sin clan, sin barra de vitals en el tag.
+- **Combate (rooms de batalla):** el **luchador** no ve nametag ni barras flotantes. El **espectador** ve nombres en overlay de UI (no pegados al sprite).
 
 ---
 
@@ -219,7 +257,7 @@ En una sesión Godot entra **solo el snapshot** (caps, vitals actuales al spawn,
 - Un estilo de melee (solo uno)
 - Árbol de pasivas (puntos de habilidad) y pasivas especiales (puntos de rebirth) cuando existan (§11)
 
-Snapshot de primeras etapas: **reino + clan (identidad, sin skills) + tres vitals + % de equipo + melee + hotbar + dash**.
+Snapshot de primeras etapas: **reino + clan (sin skills de clan) + kit A de 4 técnicas + tres vitals + melee**. Sin `%` de equipo.
 
 ---
 
@@ -237,7 +275,7 @@ Tres pools. IDs de data en inglés.
 
 | id | Nombre | Qué es |
 | --- | --- | --- |
-| `mana` | Maná | Energía de poder. En la fuente de kill-budget también se llama **chakra** al robo. Tiene **reserva** (`mana_reserve`): el pool se recarga **cargando** (hold Z, §9.1), no por regen automática (§12.6). |
+| `mana` | Maná | Pool de combate. **Reserva** (`mana_reserve`) = **3×** el cap (base **6000**). Hold Z recarga el pool desde la reserva al **5 % del cap / s** (100/s con cap 2000). Equipo y pasivas podrán subir esa tasa (B+). |
 | `stamina` | Stamina | Salud física y mental. Permite **correr** y **resistir golpes**. |
 | `vitality` | Vitalidad / vida | Salud vital. A **0 → KO**. |
 
@@ -246,10 +284,11 @@ Caps **base** de un jugador (sin equipo; el equipo modifica maná y stamina):
 | Vital | Cap base |
 | --- | --- |
 | Maná | 2000 |
+| Reserva de maná | 6000 (3× maná) |
 | Stamina | 2000 |
 | Vitalidad | 1500 |
 
-`speed` de movimiento sigue existiendo como dato de locomoción, no como stat de daño.
+Locomoción (px en runtime; data en tiles): andar **1,5 tiles/s**; sprint **×1,5**. Ver `nexum-terra/data/movement.json`.
 
 ### 6.2 A qué pool pega cada tipo de daño
 
@@ -300,7 +339,7 @@ Anillo de Poder (cuando exista): +20% a **todos** los daños causados; +15% man�
 
 | Dato | Catálogo (`nexum-terra/data`) | Postgres | Memoria de tick |
 | --- | --- | --- | --- |
-| Caps base (2000 / 2000 / 1500) y curva si deja de ser plana | sí | no | no |
+| Caps base (maná 2000, reserva 6000, stam 2000, vit 1500), melee, movimiento | sí (`vitals.json`, `melee.json`, `movement.json`) | no | no |
 | Level, xp, `kingdom_id`, `clan_id` | no | `characters` | no |
 | `base` y `damage_channel` / tags de cada skill | sí | no | no |
 | Mods `%` o add de `item_def` (caps de maná/stamina, % por tag) | sí | no | no |
@@ -317,10 +356,10 @@ No hay un **build predefinido**. El “build” en la práctica es: qué armas y
 
 | Pieza | Qué es |
 | --- | --- |
-| Skillbar | 6 hotslots + barras de skills (rueda del mouse cambia de barra) |
-| Melee kit | Un estilo; golpes ligero/pesado, guardia, carga, choque de armas (§9.6). Daño canal `stamina`, número estático + % `melee` del equipo |
-| Movilidad | Dash (y/o reemplazo según reino cuando esté en data) |
-| Loadout | Un snapshot por personaje; se congela al entrar a 1v1 |
+| Skillbar | En A: **4** hotslots iguales para todos (§10.0). Rueda no cambia de barra hasta B. |
+| Melee kit | Un estilo; golpes ligero/pesado, guardia, carga, choque de armas (§9.6). Daño canal `stamina`, `base` estático. En A **no** hay `% melee` de equipo (0). |
+| Movilidad | `iaido-dash` y `reverse-dash` en el kit (C / V). Kawarimi en hotslot 3. |
+| Loadout | El mismo kit A + estilo melee. Se congela al entrar a 1v1. Sin snapshot de items en A. |
 
 Persistencia sugerida: jsonb `characters.loadout` `{ skillBar: [], meleeStyleId: "" }` o tabla equivalente. En cola/ready-check se **congela**; no se cambia a mitad del 1v1. Fuera de match, el jugador puede cambiar cuando quiera.
 
@@ -336,7 +375,7 @@ Persistencia sugerida: jsonb `characters.loadout` `{ skillBar: [], meleeStyleId:
 | Activas | Familia/profesión: camino de uso (§11.5). Elementales: se **obtienen** con puntos de habilidad y **suben de nivel** usándolas. No AFK |
 | Rebirth | Cada rebirth es más difícil hasta el #10; después la dificultad se estabiliza. Al renacer, en selección de personaje aparece un **alma flotante**, no un slot vacío. Flujo, requisitos y qué se conserva: §11.3. Puntos de rebirth alimentan **pasivas especiales**, no el árbol de §11.2 |
 
-Los 16 clanes ya están en catálogo. Las páginas Notion de skills por clan (ver §12) se fusionan cuando se implemente la primera skill, no al elegir el clan.
+Los 16 clanes ya están en catálogo. El diseño de skills de 8 clanes está en §12.9. Data (`clans.json` `skills: []`) y tick **no** las leen hasta la primera skill de Etapa B.
 
 ---
 
@@ -447,7 +486,7 @@ Los orbes se fusionan para crear un **elemento compuesto**. Nombres de compuesto
 
 Modificadores de fusión (cuando existan esas piezas):
 
-- Clan **Gadgetrix**: +25% (60 → 85). No se aplica mientras las features de clan estén apagadas.
+- Clan **Gadgetrix**: +25% (60 → 85). Pasiva `crafting` §12.9. No se aplica mientras las features de clan estén apagadas.
 - Cada **runa de crafteo**: +5%. Cap de runas: no cerrado.
 
 Crafting es Inventory (REST / servicio Hono), no el tick. El resultado es un `item_instance` con `def_id` de compuesto.
@@ -643,7 +682,7 @@ Moneda citada: **Hesedias** (unidad Hesedia). Drops de dungeon / craft de orbes 
 
 ## 9. Gameplay y controles
 
-Plataformas objetivo: **PC (teclado y mouse), mando y móvil**. El esquema de mando no está cerrado.
+Plataformas objetivo: **PC (teclado y mouse), mando y móvil**. Mando y móvil se estructuran **después**; A prioriza mecánicas en teclado.
 
 Convención en tablas: 🔳 / 🔼 / ⭕ / ❎ = face buttons del mando; L2/R2 = gatillos. En teclado, 🔳 ≈ golpe izquierdo / Space según contexto de arma; ver filas.
 
@@ -654,7 +693,10 @@ Convención en tablas: 🔳 / 🔼 / ⭕ / ❎ = face buttons del mando; L2/R2 =
 | Movimiento | WASD | Joystick izquierdo |
 | Cámara | Mouse | Joystick derecho |
 | Modo maná (tap) o recargar maná desde la **reserva** (hold) | Z | L2 |
-| Reemplazamiento (Kawarimi: cuerpo falso + invisibilidad breve para reposicionar) | R | Doble R2 *o* Doble L2 (la fuente duplica R; unificar al implementar) |
+| Dash adelante (`iaido-dash`) | C **o** 1 | L2 + ❎ |
+| Reverse dash | V **o** 2 | (provisional) |
+| Kawarimi | R **o** 3 | Doble R2 (provisional) |
+| Armadura mágica (toggle) | Q **o** 4 | (provisional) |
 | Barra de skills anterior / siguiente | Scroll up / down | ← / → en stick derecho |
 | Guardia | X | R2 |
 | Golpe ligero (2H) o arma mano izquierda | Espacio | 🔳 |
@@ -665,29 +707,33 @@ Convención en tablas: 🔳 / 🔼 / ⭕ / ❎ = face buttons del mando; L2/R2 =
 | Hotslot 4 | 4 | ← |
 | Hotslot 5 | 5 | ↓ |
 | Hotslot 6 | 6 | → |
-| Saltar (tap) | Espacio | ❎ |
+| Saltar | — (no en A) | — |
 | Correr (hold) | Shift | ❎ hold |
-| Primaria ↔ secundaria | Rueda del mouse | R2 *(conflicto con Guardia: resolver en implementación)* |
-| Dash (habilidad básica, corta distancia adelante) | C | L2 + ❎ |
+| Primaria ↔ secundaria | — (no en A; B) | — |
+| Levantarse de KO (hold, A) | F (provisional) | ❎ tap (provisional; ❎ hold sigue siendo sprint) |
 
-Notas: Espacio está asignado a golpe ligero **y** a salto (tap). Rueda a cambio de barra **y** a swap de arma. R2 a guardia **y** swap. Eso hay que desambiguar (hold vs tap, o mover swap a otro botón) al cerrar input; no se inventa el layout final aquí.
+**Etapa A cerrado:** Espacio = ligero. Rueda = barras (una sola en A). Swap no. **C/1** dash, **V/2** reverse dash, **R/3** Kawarimi, **Q/4** armadura mágica. Guardia = X. Bind F de KO provisional.
 
 ### 9.2 Carga de golpes
 
-Click izquierdo (mano izquierda) y click derecho (mano derecha) tienen **barras de carga**.
+Ligero y pesado tienen **barra de carga**. Llena en **5 s**. Solo al **100 %**: **+25 %** al daño melee de **ese** golpe (se consume al soltar). Por debajo de 100 % no hay bonus.
+
+Un melee a carga 100 % **rompe guardia** (§9.6) y hace **0** daño.
 
 ### 9.3 Combos de arma (melee)
 
 En esta sección 🔳 = click izquierdo, 🔼 = click derecho.
 
-| Secuencia | Resultado |
-| --- | --- |
-| 🔳 + 🔳 + 🔳 | Combo básico |
-| 🔳 + 🔼 + 🔳 | Combo secundario |
-| 🔳 + 🔼 + 🔼 | Habilidad especial de arma |
-| 🔳 + 🔳 + 🔼 + 🔼 | Habilidad especial de arma |
+| Secuencia | Resultado | Daño stamina (A) |
+| --- | --- | --- |
+| 🔳 | Ligero | **100** |
+| 🔼 | Pesado | **250** |
+| 🔳 + 🔳 + 🔳 | Combo básico | **100 + 100 + 150** = **350** (el tercero lleva **+50**) |
+| 🔳 + 🔼 + 🔳 | Combo secundario | B+ (números luego) |
+| 🔳 + 🔼 + 🔼 | Habilidad especial de arma | B+ |
+| 🔳 + 🔳 + 🔼 + 🔼 | Habilidad especial de arma | B+ |
 
-Aplica a espada, hacha, lanza, daga. Detalle de frames / cancel: abierto. Guardia, rotura y choque de armas: §9.6.
+Aplica a espada, hacha, lanza, daga. **Etapa A:** se implementan ligero, pesado y combo básico. Ligero **cancelable a dash y a skill después del hit**, no en el startup. Data: `nexum-terra/data/melee.json`.
 
 **Arco:** no usa esos combos. Skills propias (triple flecha, lluvia de flechas, etc.).
 
@@ -705,7 +751,9 @@ Mezclados con el arma equipada. El staff no hace nada en el combo salvo la regla
 
 ### 9.5 Target
 
-Se abandonó el click-sobre-enemigo como requisito (móvil y mando). **Target y “drop target” están abiertos.** No implementar un tab-target de MMO clásico hasta cerrar esta decisión.
+Se abandonó el click-sobre-enemigo como requisito (móvil y mando).
+
+**Etapa A:** no hay lock. Hitbox / arco frente al facing. Cámara top-down **640×360** (20×11 tiles visibles). En 5v5, tinte de bando (§0.1), no nametag.
 
 Gameplay Notion: [Gameplay](https://app.notion.com/p/Gameplay-2891e055ee8d813598c4d30709684bd1?pvs=21).
 
@@ -715,31 +763,32 @@ Etapa **A** (tick de rooms). Números en `nexum-terra/data/melee.json`. La guard
 
 #### Barra de guardia
 
-Hay una **barra de guardia**. Con la guardia alta, el daño recibido se reduce un **alto %** (tabla abajo). Ese % consume / baja la barra (tasa exacta: al implementar).
+Baja **por hit**, no por tiempo. Pool **500** (referencia: 5 ligeros de 100). El hit resta su `base` de stamina (sin el 40 %; el 40 % es lo que llega al pool de stamina del defensor mientras la guardia aguanta).
 
-| Defensa | Reducción de daño |
+| Defensa | Reducción de daño (stamina del cuerpo) |
 | --- | --- |
-| Escudo | **60–80%**, según el `item_def` del escudo |
-| Brazos (sin escudo, guardia alta) | **40%** |
+| Escudo | **60–80%**, `item_def` (B; no hay escudo en A) |
+| Brazos (A) | **40%** |
 
-Si la barra llega a 0, la guardia **se rompe**. Hasta que la barra **vuelva a cargarse**, no se puede volver a levantar.
+Si el pool llega a 0, la guardia **se rompe**. Hasta recargar la barra, no se levanta.
 
-#### Rotura de guardia
+**Excepción:** un melee soltado a **carga 100 %** rompe la guardia **aunque el pool no esté vacío**. Ese golpe hace **0** daño. Stun **400 ms** + separación **1 tile** (misma forma que el choque, otra distancia).
 
-Al romperse:
+#### Rotura de guardia (pool vacío o carga 100 %)
 
-- El defensor queda **stuneado** unos pocos segundos (ms exactos: al implementar). Queda vulnerable.
-- Puede aplicarse la misma **onda de choque** que el choque de armas (§9.6 siguiente): empuje de separación. El stun da ventana para que el agresor **se aleje** (o persiga). Empuje en rotura: **sí, misma forma que el choque**; distancia en tiles: al implementar (compartida).
+- Stun **400 ms**.
+- Separación **1 tile** (no los 2 del clash arma-arma).
+- Carga 100 %: daño **0**. Rotura por pool: el golpe que vacía aplica aún el 40 % al cuerpo (salvo que data diga lo contrario).
 
 #### Choque de armas
 
 Cuando dos golpes melee **conectan arma contra arma** (no contra hitbox de cuerpo):
 
 - Las armas **rebotan**.
-- Ambos se **separan** unos tiles (distancia exacta: al implementar).
-- Se emite una **onda de choque** (VFX + el empuje). No es skill de hotbar; es resolución de hit vs hit.
+- Ambos se **separan 2 tiles**.
+- Onda de choque (VFX + empuje).
 
-Arco y staff no chocan así. Frames de parry / ventana de “clash”: al implementar; no inventar timing aquí.
+Arco y staff no chocan así. Ventana de clash: al implementar.
 
 ---
 
@@ -761,15 +810,18 @@ Campos mínimos de una activa:
 
 No hay `scale_atk` / `scale_pow`. El cliente usa el mismo `id` para animación. El servidor aplica números. “Dash invulnerable 200 ms” es un `status_effect` `invuln` en data, no `if skill == dash` en el player.
 
-**Primeras etapas — kit mínimo a definir en data (placeholders hasta balance):**
+**Etapa A — kit base de Nexum Terra (las mismas 4 para todos).** Data: `nexum-terra/data/skills/kit-a.json`. Sabor del universo (samurái, ninja del cielo, magia como ciencia), **no** 1 skill por reino. El tick lee `skill_id`. Guardia sigue siendo estado, no hotslot. Sin i-frames en dashes (0 ms). Números v1 (la reducción de armadura y su CD post-off están marcados para playtest).
 
-- Dash (y variante de reino cuando exista)
-- Reemplazamiento (Kawarimi)
-- Guardia: estado + barra (§9.6), no skill de hotbar
-- 4–6 activas genéricas de prueba para PvP
-- Melee como skills de arma (`weapon_skill` ids), no lógica en el nodo
+| Slot | `id` | Fantasía | Qué hace | Coste | CD |
+| --- | --- | --- | --- | --- | --- |
+| 1 | `iaido-dash` | Corte-paso samurái | Dash **adelante** 2,5 tiles. Sin daño. | 40 stam | 0,8 s |
+| 2 | `reverse-dash` | Mismo arte, retirada | Dash **atrás** 2,5 tiles. Sin daño. CD **independiente** del dash. | 40 stam | 0,8 s |
+| 3 | `kawarimi` | Reemplazamiento | Cuerpo falso 400 ms, invis 250 ms, blink 3 tiles. | 90 stam | 6 s |
+| 4 | `magic-armor` | Armadura de maná | Toggle. **−30 %** daño **melee** recibido, **30 s**. Se apaga al vencer el tiempo **o** al pulsar de nuevo. **El CD (20 s v1) empieza al apagarse**, no al encender. Coste de maná **al activar**. Se acumula con guardia de brazos. Distinto de `rock-armor` elemental (§10.1). | 150 maná | 20 s tras off |
 
-**Luego:** genéticas de clan, profesión, pasivas generales (entrenables) y elementales (activas: puntos para obtener, uso para nivel; pasivas: puntos). Elementales de los 4 básicos: §10.1 (catálogo listo; el tick las ignora hasta el recorte). Cómo se aprenden: §11.5. Puntos y rebirth: §11.1–11.4.
+**No van a hotbar:** melee de arma, guardia.
+
+**Luego:** genéticas de clan, profesión, pasivas generales y elementales. Elementales: §10.1. Obtención: §11.5.
 
 ### 10.1 Elementales — cuatro básicos
 
@@ -1017,7 +1069,7 @@ Rebirth exige rango **Élite** (§11.3); al renacer el rango de reino vuelve a N
 
 ## 12. Misiones, mundo social y profesiones
 
-Fuentes volcadas: Misiones, Divisiones, Renegados, Robo, KO y Death, Regeneración, Logout bajo ataque, Médico, Espadachín, Sensor. **Skills de clan** siguen fuera (otro prompt).
+Fuentes volcadas: Misiones, Divisiones, Renegados, Robo, KO y Death, Regeneración, Logout bajo ataque, Médico, Espadachín, Sensor, skills de 8 clanes (§12.9). Ocho clanes aún sin PDF.
 
 Números con ceros: el export de Notion pierde glifos `0`/`D`/`R` en CID; aquí se reconstruyen con el resto del GDD (p. ej. 150 Honor = suelo de Élite/Comandante en §11.6–11.7). Si un valor no encaja al implementar, se corrige aquí, no en el tick.
 
@@ -1047,7 +1099,15 @@ Clasificación de **dificultad** D / C / B / A / S. Más rango → más recompen
 
 El catálogo se **añade con el juego**. No hay lista cerrada en la fuente; el brainstorm admite cosas como “matar 5 miembros de un reino”.
 
-**Etapa A / B (rooms e instancias).** Objetivos que no necesitan overworld: p. ej. **gana 3 batallas 1v1**, completar N arenas, matar al dummy-jefe de una mazmorra. Mismo framework de misión (id, rango, recompensa); el `progress` lee `match_records` / fin de run, no posición de mundo.
+**Etapa A / B (rooms e instancias).** Catálogo A (`nexum-terra/data/missions.json`):
+
+| id | Texto |
+| --- | --- |
+| `win-3-duels` | Gana 3 matchs 1v1 |
+| `play-10-matches` | Participa en 10 matchs 1v1 o 5v5 |
+| `win-5-arenas` | Gana 5 matchs 5v5 |
+
+Recompensas: se añaden después. El `progress` lee `match_records`. Más misiones se agregan **a medida**.
 
 **Etapa C — escoltar y robar mercancía** (misión **compartida**: varias personas la toman y cooperan).
 
@@ -1107,7 +1167,11 @@ Rooms A/B: no hay cadáver de mundo ni menú de robo.
 
 Vitalidad a **0** → **KO**, no muerte inmediata.
 
-**Levantarse** es una **elección** (no auto-stand). Si no te esfuerzas (olvidar tecla, tecla mala, o dejar pasar el tiempo) → **mueres**. Fantasía de minijuego (puntería, orbes/espíritus); más **conteo de KO** → más difícil; el **último** KO del cupo debe ser **casi imposible** (pasar el rato antes de morir). Fallback: mantener una tecla **X** tiempo (X abierto).
+**Levantarse** es una **elección** (no auto-stand). Si no te esfuerzas (soltar la tecla o dejar pasar el tiempo) → **mueres**.
+
+**Etapa A (rooms):** mantener **una tecla** el tiempo de canal de la tabla de abajo (Novicio = 8 s). Sin minijuego. La tecla no puede ser la de guardia (X); bind concreto al cerrar input §9.1.
+
+**Más adelante:** fantasía de minijuego (puntería, orbes/espíritus); más **conteo de KO** → más difícil; el **último** KO del cupo debe ser **casi imposible**. El hold de A queda como fallback.
 
 **Cupo de KOs según rango de reino** (§11.7):
 
@@ -1154,7 +1218,7 @@ Mazmorra: wipe de party y reentrada §16.4; el KO de combate es este apartado.
 
 ### 12.6 Regeneración
 
-Fuente: *Sistema de Regeneración*. Tasas (puntos/s, duración de beber poción): **abiertas**. La pasiva `fast-regeneration` (§11.2) acelera stamina **cuando esta regen aplica**, no inventa un cuarto sistema.
+Fuente: *Sistema de Regeneración*. Pociones: segundos de beber y cap por match **abiertos**. Sillas A: **30 s** a full (§ abajo). Hold Z: **5 % cap / s**.
 
 **No hay regen automática genérica** (andar, pelear, o un stat de personaje que suba pools al 100 %). Lo que pase de las reglas de abajo es **equipamiento** (`item_def` / orbes), no un tick aparte.
 
@@ -1164,9 +1228,9 @@ Jerarquía (la misma que el overflow de daño, §6.3, al revés del “pozo”):
 Maná → Stamina → Vitalidad
 ```
 
-#### Quieto (techo 50 %)
+#### Quieto (techo 50 %) — solo Etapa C (overworld)
 
-Hay que estar **quieto** (sin movimiento). Cada pool solo sube **hasta el 50 %** de su cap.
+Hay que estar **quieto** (sin movimiento). Cada pool solo sube **hasta el 50 %** de su cap. **No** aplica en lobby, `pvp_duel`, `pvp_arena` ni `pve_dungeon`.
 
 Orden **estricta**, un peldaño a la vez:
 
@@ -1178,7 +1242,9 @@ Si el maná ya iba al 80 %, se salta al paso 2. Moverse corta esta regen. **No**
 
 #### Reposo (sillas / camas)
 
-Tiles de reposo (lobby, instancias, mundo). Ahí la regen cubre **desde la reserva de maná hasta la vitalidad**. El pool de **maná no se llena solo**: hay que **cargar de la reserva** (hold Z, §9.1). Stamina y vitalidad sí suben sentado (tasa abierta).
+Tiles de reposo. En **Etapa A** el lobby **tiene** sillas/camas. En mazmorra/arena, solo si el mapa las coloca. En C, también en mundo.
+
+Ahí, en **30 s**, se llenan **vitalidad, stamina, maná y reserva de maná** (tasas = cap / 30). Hold Z sigue existiendo fuera de la silla.
 
 El **conteo de KOs** puede bajar hasta **0** en reposo, pero **exige vitalidad al 100 %**. Sin eso, el conteo no se mueve.
 
@@ -1188,9 +1254,13 @@ Cualquier **curación de vitalidad** que la lleve al 100 % (médico, poción de 
 
 Se compran pociones de **maná** y de **vida** (Hesedias; catálogo Etapa B). **No te puedes mover** unos segundos mientras las bebes. Son **más rápidas** que las sillas.
 
-En **pelea** solo se beben si el **oponente está KO**. Cap de usos por **arena**: abierto (“luego se revisa”); el ruleset `pvp_arena` / `pvp_duel` puede poner 0 o N.
+**Arena y mazmorra:** se **pueden** beber en cualquier momento del match (el rival **no** tiene que estar KO). **No te puedes mover** mientras. Cap de usos por match: abierto.
 
-Etapa A: quieto 50 % + hold Z. Tiles de reposo en lobby si existen. Pociones cuando haya inventario.
+**Quieto (techo 50 %):** **solo open world (Etapa C).**
+
+**En arena / mazmorra, recuperación permitida:** (1) recargar maná desde la **reserva** (hold Z); (2) pociones (desde B). Nada más, salvo sillas si el mapa las tiene.
+
+Etapa A: hold Z sí. Pociones **no** (sin inventario). Lobby: sillas sí, quieto no.
 
 ### 12.7 Logout “Bajo ataque”
 
@@ -1243,9 +1313,260 @@ Mejora el uso de **espadas** frente al resto del arma melee.
 
 **Activas:** `hide-magic` (nadie ve info sensorial ni la **identidad**); `detect-presence` (flechas en órbita: dirección, **color de maná**, distancia); `false-presences` (**5** clones, taunt fuerte, `group_name` Taunt); `distortion` (invisible **mientras no te mueves**).
 
-### 12.9 Skills de clan (pendiente)
+### 12.9 Skills de clan (Etapa B; catálogo vacío en A)
 
-No volcar de memoria. PDFs en un prompt siguiente. Notion: [Omnivisus](https://app.notion.com/p/Omnivisus-Skills-2891e055ee8d81bca43ef96c5cc18267?pvs=21), [Gadgetrix](https://app.notion.com/p/Gadgetrix-Skills-2891e055ee8d81fd9507c492928316b8?pvs=21), [Entomante](https://app.notion.com/p/Entomante-Skills-2891e055ee8d8108bdb5d54ffc692d91?pvs=21), [Nachtsoldaten](https://app.notion.com/p/Nachtsoldaten-Skills-2891e055ee8d8156b831cbf162e250cd?pvs=21), [Pulmonarius](https://app.notion.com/p/Pulmonarius-Skills-2891e055ee8d8173a00df68feceaf190?pvs=21), [Sangrafilos](https://app.notion.com/p/Sangrafilos-Skills-2891e055ee8d8117af0bd8299cd1546b?pvs=21), [Umbromante](https://app.notion.com/p/Umbromante-Skills-2891e055ee8d818aab16ee84dfac6767?pvs=21), [Geisteswaffen](https://app.notion.com/p/Geisteswaffen-Skills-2891e055ee8d81ae9388e1e94d8502bf?pvs=21). El resto de clanes aún sin página.
+Genéticas del **clan de nacimiento**. Cómo se aprenden: §11.5. El rebirth las borra todas (§11.3). En Etapa A `clans.json` sigue con `skills: []` y el tick **no** lee el clan para daño (§3.1). Números de daño/CD/consumo: **abiertos** salvo lo escrito aquí. Ids propuestos para data; no hay `if` en el nodo del jugador.
+
+**Volcados (8):** Omnivisus, Gadgetrix, Entomante, Nachtsoldaten, Pulmonarius, Sangrafilos, Umbromante, Geisteswaffen. **Sin PDF (8):** Sagitta, Ciberlance, Herbora, Pyrofauces, Stellamante, Vitamancers, Crystallomante, Sonomantes. Quintos clanes: §11.3.
+
+Glifos `0`/`×`/`(`/`)` reconstruidos del CID de Notion como en el resto de §12 (p. ej. áreas **10×10**). Si al implementar un valor no encaja, se corrige aquí.
+
+**Reglas compartidas**
+
+- Canal de daño: el de cada skill en data (`stamina` melee, `mana` el resto, salvo Entomante `mana_steal` / Sangrafilos sangrado).
+- Visión de “una región entera” (Omnivisus): fantasía de **Etapa C**. En B = el mapa de la **instancia**.
+- No prototipar overworld para range, sombras de mundo ni “noche” de servidor: en rooms/mazmorra, “noche” es flag del ruleset o se deja apagada hasta C.
+
+#### Omnivisus (`omnivisus`, Fontaine)
+
+Todas las habilidades **exigen el ojo activo**. Fantasía: ojos científicos; melee a puntos vulnerables / sistema mágico interno.
+
+**Pasivas**
+
+| id (propuesto) | Efecto |
+| --- | --- |
+| `omnicontrol` | Menos consumo de maná de skills Omnivisus |
+| `precision` | Sube la chance de secundarios Omnivisus de **0 a 100 %** |
+
+**Maestría del ojo** (`omnivisus-mastery`): 3 desbloqueos al entrenar.
+
+| Orden | Efecto |
+| --- | --- |
+| Inicial | Círculo bajo las personas; según “fuerza” muestra **cantidad de maná** |
+| 2 | El círculo cambia de color / aura elemental (**5** elementos o compuestos) para leer el tipo de skill que viene |
+| 3 | Card flotante con target: vida, stamina, maná y secundarios |
+
+**Activas**
+
+| id (propuesto) | Efecto |
+| --- | --- |
+| `range-extension` | Ve más mapa que el resto |
+| `repulsion` | Campo en un diámetro: empuja jugadores u objetos dentro del círculo |
+| `fist-of-uncontrol` | Golpe: la víctima **gasta más maná** al usar skills |
+| `fist-of-vertigo` | Golpe: invierte movimiento (**A↔D**, etc.) |
+| `twin-eagles` | Un águila por mano; cargas de puño las lanzan; puños normales que tocan **roban maná** |
+
+#### Gadgetrix (`gadgetrix`, Fontaine)
+
+Gadgets de protección y ataque (propio o aliados). Fuente: “habilidades de **1** familia”. **3** bots invocables (los de abajo). Crafting de orbes: **+25 %** de éxito (§8.7); apagado mientras el clan no esté en data.
+
+**Pasivas**
+
+| id (propuesto) | Efecto |
+| --- | --- |
+| `crafting` | +probabilidad de éxito en **cualquier** crafting, hasta **25 %** |
+| `attack-ai-companion` | Inicial. Ataca físicamente al objetivo y a quien golpee al dueño. Ofensivo, controlable a distancia |
+| `evasion-ai-companion` | Bot volador pequeño: evade, entrega auto-target, mantiene target fijo. Si profesión **Médico** (§12.8): **sana** aliados cercanos |
+
+**Activas**
+
+| id (propuesto) | Efecto |
+| --- | --- |
+| `laser-barrier` | 4 bots a las esquinas de un cuadrado **10×10**. Al unir láseres **nadie sale** |
+| `chain-sacrifice` | Muchos bots en un círculo grande; caminan hacia un círculo chico. Colisión → explosión en cadena; círculo chico → **gran** explosión |
+
+#### Entomante (`entomante`, Spectra)
+
+Insectos en el cuerpo. **Dos tipos:** los que **comen** maná y los que **almacenan** maná. Debilidades de los que comen: Fuego, Agua, Viento, Rayo y Armadura de Tierra. El clan debe **ver** con facilidad al invadido (indicador). Canal `mana_steal` cuando exista.
+
+**Pasivas**
+
+| id (propuesto) | Efecto |
+| --- | --- |
+| `insect-mastery` | Distinguen tu maná del ajeno |
+| `mana-store` | Más maná almacenado y entregado al usuario. Tope: **75 %** del maná de la víctima |
+| `strong-bite` | Más fuerza para comer armadura de tierra |
+| `elemental-resist` | Más chance de no morir ante fuego, agua, viento y rayo |
+
+**Activas**
+
+| id (propuesto) | Efecto |
+| --- | --- |
+| `invade-body` | Puño: deja un insecto. Detecta el cuerpo real, lo encuentra a larga distancia o ataca. Al **KO** el insecto vuelve. **Imposible** saber si te invaden |
+| `steal-mana` | El invasor roba maná; el usuario lo recibe **cuando el insecto vuelve** |
+
+Los siguientes envían come-maná en su mayoría; algunos llevan almacenadores → chance de **invadir cuerpo**.
+
+| id (propuesto) | Efecto |
+| --- | --- |
+| `swarm` | Línea recta, **6** tiles de altura. Al tocar, insectos se quedan **comiendo** maná (no lo roban) |
+| `insect-barrier` | **10×10**; se puede salir, pero tocar la barrera deja come-maná |
+| `insect-shield` | Cubre el cuerpo, menos daño. Melee recibido → insectos al golpeador y comen su maná (pequeña chance de invadir) |
+| `insect-wave` | Círculo que crece desde el usuario |
+| `insect-storm` | Libera todos + nube **8×8** centrada en él. **Gran** consumo de maná |
+
+#### Nachtsoldaten (`nachtsoldaten`, Spectra)
+
+Al nacer reciben la espada del clan y se **bloquea el slot de mano izquierda**. “Natchsoldaten” en la fuente = este clan.
+
+**Pasivas**
+
+| id (propuesto) | Efecto |
+| --- | --- |
+| `nachtsoldaten-sword-mastery` | Menos maná al usar la espada; **evoluciona** la espada |
+| `dark-sword` | 1.ª etapa: misma velocidad que Luna, **menos** daño |
+| `moon-sword` | Más daño que Oscura |
+| `night-sword` | Más daño **y** velocidad que Luna |
+| `night-domain` | Todos los ataques de esta espada (melee o técnicas) pasan a **base de poder mágico** |
+| `lunar-blessing` | Hijos de la Luna: menos daño cuando “el tiempo favorece” = **más resistentes de noche** |
+| `cut-mastery` | El Corte nocturno no te daña con sus explosiones/ataques |
+
+**Activas**
+
+| id (propuesto) | Efecto |
+| --- | --- |
+| `moon-blade` | Invoca espada (alma + noche). Larga, una mano, algo pesada, cuerda en el mango. Evoca técnicas y evoluciona. Se desbloquea **Giro celestial** |
+| `throw-sword` | Arroja al frente a alta velocidad; reaparece en la mano al destruirse |
+| `celestial-spin` | Domo giratorio de daño alrededor. Con **Espada de la noche** puede **cancelar** técnicas que le arrojen |
+
+Con **Espada de la noche**:
+
+| id (propuesto) | Efecto |
+| --- | --- |
+| `night-cut` | Canal continua; el **próximo básico** suelta un haz según carga. Empieza al ejecutar la skill; **puedes moverte**; se libera con slash o con `tensa`. La espada se ilumina por cargas |
+| | **≤ 30 %:** haz de **1** tile, muy rápido |
+| | **≤ 60 %:** haz de **3** tiles, velocidad normal |
+| | **100 %:** haz de **3** tiles, alta velocidad, daño **explosivo** al impactar |
+| `tensa` | Requiere Corte nocturno en carga. Melee: suelta el % acumulado en corte explosivo + onda. Golpea al nivel del % |
+
+#### Pulmonarius (`pulmonarius`, Terrara)
+
+Fuerza sobrehumana, distancia y melee. **Cambio de sol cada 2 s.** Cambiar consume **maná y stamina** (anti-abuso).
+
+**Pasivas**
+
+| id (propuesto) | Efecto |
+| --- | --- |
+| `sun-power` | Desbloquea soles según maestría |
+| `inner-sun` | Más fuerza solar que el sol central reparte al cuerpo **de noche** |
+| `solar-resist` | Hasta **−50 %** consumo de maná al usar poder del sol |
+| `stellar-speed` | Más chance de **esquivar automático** ataques físicos y armas |
+
+Maestría de soles (vía `sun-power`):
+
+| Sol | Umbral |
+| --- | --- |
+| Norte | Inicial |
+| Sur | **25 %** |
+| Este | **50 %** |
+| Oeste | **75 %** |
+| Centro | **100 %** |
+
+**Activas**
+
+| id (propuesto) | Efecto |
+| --- | --- |
+| `opening` | Entra en respiración y enfoca el Sol (beneficios del sol activo) |
+
+**Apertura — beneficios por sol**
+
+| Sol | Foco | Trade-off |
+| --- | --- | --- |
+| Norte | Parte superior / postura | Menos daño físico recibido; **menos fuerza** |
+| Sur | Piernas | Más velocidad; **menos resistencias** |
+| Este | Brazo derecho | Más fuerza, menos stamina; ágil y abrasadora |
+| Oeste | Brazo izquierdo | Más fuerza, menos stamina; más precisa y directa |
+| Centro | Corazón (bombea más sangre) | Beneficios **menores** que los otros; **menor** consumo de stamina y maná |
+
+`stellar-meteors` y `fleeting-trail` son técnicas físicas: **varían con el sol** y el daño sigue las capacidades físicas del usuario.
+
+**Meteoros estelares** (`stellar-meteors`)
+
+| Sol | Forma |
+| --- | --- |
+| Norte | Corto alcance: varios golpes consecutivos al de enfrente |
+| Sur | Línea: el usuario avanza golpeando en recta a alta velocidad |
+| Este | Ráfaga de puños / proyectiles de aire comprimido al frente |
+| Oeste | Un cañón de aire en línea; puede desplazarse hacia donde apunta |
+| Centro | Ráfagas rápidas y cierra con el cañón del brazo; fricción tipo llamas |
+
+**Estela fugaz** (`fleeting-trail`)
+
+| Sol | Forma |
+| --- | --- |
+| Norte | Dos patadas en combo corto alrededor del oponente (sensación: Konoha senpuu) |
+| Sur | Se abalanza en línea como flecha ardiente |
+| Este | Ráfaga de patada / proyectiles de energía |
+| Oeste | Versión concentrada: aire hacia el objetivo |
+| Centro | Patada envuelta en maná: bola de fuego en la dirección apuntada |
+
+| id (propuesto) | Efecto |
+| --- | --- |
+| `stellar-descent` | Aparece detrás, sube a la víctima y cae en rotación hasta estrellarle la cabeza en el suelo |
+
+#### Sangrafilos (`sangrafilos`, Terrara)
+
+Metal / huesos de acero; combate de **sangrado**. La **armadura ósea** es superior a los **5** elementos (rompe tierra, aparta agua, etc.).
+
+**Pasivas**
+
+| id (propuesto) | Efecto |
+| --- | --- |
+| `metamorphosis` | Convierte huesos en acero. Se entrena consumiendo el **elixir secreto** de los Sangrafilos, que sale en **cofres de mazmorra** (Etapa B, §16) |
+| `bone-resist` | Más resistencia a golpes cuerpo a cuerpo y de espada |
+| `bone-control` | Menos tiempo para dar forma a los huesos de acero |
+
+**Activas**
+
+| id (propuesto) | Efecto |
+| --- | --- |
+| `bone-armor` | Cubre la piel; reduce daño elemental, de espada y melee |
+| `steel-fingers` | **10** dedos al frente como balas en **V**; el centro de la V es **1** tile frente al usuario |
+| `steel-lance` | Barra puntiaguda al frente a alta velocidad |
+| `steel-whip` | Látigo (cuchillas + punta de lanza); gira y daña lo cercano |
+| `thoracic-strip` | Costillas como cuchillas en **8** direcciones en órbita |
+
+#### Umbromante (`umbromante`, Aerion)
+
+Dominio de la sombra. Referencia de sensación: Nara. Notas de fuente “(Aragami)” = idea de viaje entre sombras, no un 5.º clan.
+
+**Pasivas**
+
+| id (propuesto) | Efecto |
+| --- | --- |
+| `shadow-mastery` | Mejor control de sombras |
+| `shadow-range` | Más distancia que recorre la sombra |
+| `concentration` | Menos maná al controlar la sombra |
+
+**Activas**
+
+| id (propuesto) | Efecto |
+| --- | --- |
+| `shadow-extension` | Círculo **5×5**; atrapa los pies de quien cae dentro. Se puede usar manipulación de sombra **sin moverse** mientras está activa |
+| `shadow-pierce` | Sombra sólida atraviesa a la víctima **atrapada**; **sangrado** |
+| `shadow-needles` | Agujas en las **8** direcciones; sangrado al impacto |
+| `shadow-travel` | Viajar de una sombra a otra |
+| `create-shadow` | Crea una sombra temporal a la que puedes viajar |
+
+#### Geisteswaffen (`geisteswaffen`, Aerion)
+
+Clan antiguo: poder en herramientas; espada moldeable de tecnología; **medio alcance**.
+
+**Pasivas**
+
+| id (propuesto) | Efecto |
+| --- | --- |
+| `infinite-reserve` | Regenera **reservas de maná** automáticamente; **bajo ataque** (§12.7) baja un **gran %** de esa regen |
+| `mana-control` | Hasta **−10 %** consumo de maná de **todas** las skills |
+
+**Activas**
+
+| id (propuesto) | Efecto |
+| --- | --- |
+| `sharp-tsunami` | Cuchillas delante que se extienden a alto rango |
+| `quick-draw` | Espada de maná a alta velocidad; daña a todos los cercanos (**1** o **1,5** tiles) |
+| `sword-barrier` | **4** espadas persiguiéndose en un cuadrado **10×10**. Tocar = herida grave y esa espada se clava y desaparece. Con las 4 juntas la velocidad impide salir sin tocarlas |
+| `minefield` | Minas alrededor: explotan al contacto o a los pocos segundos |
 
 ---
 
@@ -1257,13 +1578,13 @@ Bandas sonoras citadas: **Base**; **Base Boss — Tenebroso — Acción**. Catá
 
 ## 14. Trabajo pendiente de diseño (aquí, no en PLAN)
 
-- [ ] Volcar skills de clan (§12.9)
-- [ ] Tasas de regen (quieto / reposo / poción) y cap de pociones por arena (§12.6)
-- [ ] Catálogo v1 de misiones de rooms (A) vs mazmorra (B) vs escolta (C)
+- [x] Volcar skills de clan (§12.9) — 8/16; faltan Sagitta, Ciberlance, Herbora, Pyrofauces, Stellamante, Vitamancers, Crystallomante, Sonomantes
+- [x] Sillas: 30 s a full (vit/stam/maná/reserva). Hold Z 5 % cap/s. Cap pociones por match: abierto (B).
+- [x] Misiones A: win 3 1v1; participa 10; gana 5 5v5. Más a medida. Recompensas luego.
 - [ ] Segunda división de Fontaine; kit de Infiltración Spectra
-- [ ] Segundos exactos para abrir menú de robo; tecla/minijuego de KO
-- [ ] ms de stun al romper guardia; tiles de onda de choque; tasa de gasto/carga de barra de guardia
-- [ ] % exacto por `item_def` de escudo (banda 60–80)
+- [x] KO en rooms A: hold de tecla (tiempos de §12.5). Minijuego = más adelante. Bind de tecla al cerrar input.
+- [x] Guardia: pool 500 por daño; carga 100 % rompe a 0 dmg, stun + 1 tile. Clash 2 tiles.
+- [ ] % exacto por `item_def` de escudo (banda 60–80; B). A = brazos 40% solamente.
 - [ ] Puntos de habilidad por umbral de clasificación / rango de reino
 - [ ] Requisitos de entrada al desafío de Soldado
 - [ ] Recompensas 1.º / 2.º / 3.º del torneo Élite (candidato: 1 punto de rebirth al 1.º)
@@ -1274,16 +1595,13 @@ Bandas sonoras citadas: **Base**; **Base Boss — Tenebroso — Acción**. Catá
 - [ ] Catálogo v1 de SKU de microtransacciones (cosmetic / currency / power) y packs de NC
 - [ ] Beneficios concretos de Patreon/crowdfunding por temporada de beta
 - [ ] Beneficios de suscripción (si se abre el canal alternativo)
-- [ ] Cerrar dash racial de Fontaine, Terrara, Spectra (Aurora/Aerion documentados, no otorgados)
-- [ ] Unificar botones duplicados (R / R2 / L2, Space, rueda, guardia vs swap)
-- [ ] Layout de mando y móvil
-- [ ] Target / drop target
-- [ ] PvP: equalizar caps de vitals y/o ignorar % de gear en `pvp_duel`
-- [ ] Tasa de gasto de stamina al correr; puntos/s de regen y segundos de beber poción (§12.6)
-- [ ] Lista v1 de tags de % (`melee` suficiente para primeras etapas)
-- [ ] Kit v1 de skills de prueba (4–6) **sin** skills de clan/elemento/profesión; melee con `damage_channel: stamina` y `base` estático
+- [x] Kit A compartido: dash, reverse dash, Kawarimi, armadura mágica (§10.0). No es 1 por reino. Sprint A ilimitado. Combo cancel post-hit.
+- [x] Layout de mando y móvil: **después** (prioridad = mecánicas).
+- [x] Target A: facing + hitbox; sin lock / tab-target
+- [x] PvP A: sin gear → caps iguales y `%` de equipo = 0. Equalizar explícito innecesario hasta B.
+- [x] Pixeloid Sans; icono de reino = cuadrado verde; arte mockup/greybox; 640×360; tiles 32; 1v1 25×15; 5v5 100×100.
 - [ ] Autocoste de súper técnicas (root / no moverse al castearla)
-- [ ] 1 arma y 1 pecho placeholder por reino
+- [x] Equipo en A: **ninguno**. 1 arma + 1 pecho por reino = Etapa B.
 - [ ] Beneficios puros de `earth` y `water`
 - [ ] Nombres y recetas de compuestos (fusión de 2); ¿existen compuestos de 3?
 - [ ] Números: quemadura, slow, empuje, vapor/calor, freeze; CD y `base` de skills §10.1

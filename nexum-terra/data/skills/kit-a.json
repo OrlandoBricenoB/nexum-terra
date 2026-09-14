@@ -1,0 +1,64 @@
+{
+  "stage": "A",
+  "grant": "all_characters",
+  "notes": "Shared Nexum Terra kit. Not gated by kingdom. Numbers v1. No i-frames on dashes.",
+  "actives": [
+    {
+      "id": "iaido-dash",
+      "hotslot": 1,
+      "also_bind": "C",
+      "tags": ["movement"],
+      "damage_channel": "stamina",
+      "base": 0,
+      "cooldown_ms": 800,
+      "resource_cost": { "stamina": 40 },
+      "dash_tiles": 2.5,
+      "direction": "forward",
+      "invuln_ms": 0,
+      "cast_ms": 80
+    },
+    {
+      "id": "reverse-dash",
+      "hotslot": 2,
+      "also_bind": "V",
+      "tags": ["movement"],
+      "damage_channel": "stamina",
+      "base": 0,
+      "cooldown_ms": 800,
+      "resource_cost": { "stamina": 40 },
+      "dash_tiles": 2.5,
+      "direction": "backward",
+      "invuln_ms": 0,
+      "cast_ms": 80
+    },
+    {
+      "id": "kawarimi",
+      "hotslot": 3,
+      "also_bind": "R",
+      "tags": ["movement"],
+      "damage_channel": "stamina",
+      "base": 0,
+      "cooldown_ms": 6000,
+      "resource_cost": { "stamina": 90 },
+      "blink_tiles": 3,
+      "decoy_ms": 400,
+      "invis_ms": 250,
+      "invuln_ms": 0,
+      "cast_ms": 50
+    },
+    {
+      "id": "magic-armor",
+      "hotslot": 4,
+      "also_bind": "Q",
+      "tags": ["defense"],
+      "toggle": true,
+      "duration_ms": 30000,
+      "cooldown_starts": "on_deactivate",
+      "cooldown_ms": 20000,
+      "resource_cost": { "mana": 150 },
+      "melee_damage_taken_pct": -0.3,
+      "manual_cancel": true,
+      "stacks_with_guard": true
+    }
+  ]
+}
